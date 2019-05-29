@@ -1,0 +1,38 @@
+#############
+## data (#10)
+#############
+Ego-facebook   9   2981
+Dolphil   8   159
+Contiguous   11   107
+Powergrid (out.opsahl-powergrid)
+Jazz musicians (out.arenas-jazz-new)
+Euroroad (out.subelj_euroroad_euroroad)
+David Copperfield (out.adjnoun_adjacency_adjacency)
+Virgili (out.arenas-email)
+Hamster full (out.petster-hamster)
+Vidal (out.maayan-vidal)
+
+##################
+## data-small (#4)
+##################
+Ego-facebook
+Protein (out.moreno_propro_propro)
+Vidal (out.maayan-vidal)
+Ca-Hepth
+
+##################
+## data-inter (#3)
+##################
+CAIDA
+PG-Privacy (out.arenas-pgp)
+Reactome (out.reactome)
+
+################
+## data-big (#6)
+################
+Ego-Twitter
+Com-DBLP
+RoadNet-PA
+Com-Youtube
+RoadNet-TX
+RoadNet-CA

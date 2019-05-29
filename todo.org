@@ -1,0 +1,14 @@
+BUID::
+I use julia 0.7.0 installed in ~/Documents/soft with julia070.
+Depends on Laplacians: http://danspielman.github.io/Laplacians.jl/latest/
+if not added, add Laplacians through julia:
+>julia070; ]; add Laplacians; ^D; or 
+>julia070 -e 'Pkg.add("Laplacians.jl")';
+run with:OPENBLAS_NUM_THREADS=1 julia070 -O3 test.jl data
+
+ABOUT SOFT::
+-I want to check if the star-decomposition of a graph can be 
+used to approximate effective resistance distances.
+-Should be compared with the gcfcc-julia code of the chinese paper.
+-Files graph.jl, lapl.jl and logw.jl are taken from the chinese.
+-Laplacians package treats graphs as SparseMatrixCSC data
