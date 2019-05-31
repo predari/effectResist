@@ -21,6 +21,8 @@ function LinvdiagSS(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4.0, JL
         # solve(L, ((QW^(1/2)B)^T))^T
         # v here is Z_{i,:}
         v = f(ur[:])
+        #println("vector v=",v)
+        #println("type=",typeof(v),"size=",size(v,1),",",size(v,2))
         # er(u) = Sigma_{v\in V\u}(Z_{u,v})^2
         # decause I'll do the above k times
         # given the k random projections,
