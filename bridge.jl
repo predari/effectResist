@@ -23,6 +23,11 @@ julia> bridges(PathGraph(5))
 ```
 """
 
+# struct SimpleEdge{T<:Integer} <: AbstractSimpleEdge{T}
+#     src::T
+#     dst::T
+# end
+
 
 function bridges end
 #@traitfn

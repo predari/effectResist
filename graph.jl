@@ -171,15 +171,18 @@ function Components3Graph(n:: Int, m:: Int)
     return Graph(n,m,nbr)
 end
 
-function LineGraph(n:: Int, m:: Int)
+function LineGraph(n:: Int)
     nbr = Array{Array{Int, 1}}(n)
     for i in indices(nbr,1) nbr[i] = [] end
-    push!(nbr[1], 2)
-    push!(nbr[2], 1)
-    push!(nbr[2], 3)
-    push!(nbr[2], 4)
-    push!(nbr[3], 2)
-    push!(nbr[4], 3)
+    if n >= 2
+        push!(nbr[1], 2)
+    end
+    for i in 2:n-1
+        push!(nbr[i], i+1)
+        push!(nbr[i], i-1)
+    end
+    push!(nbr[n], n-1)
+    m = 2*n
     return Graph(n,m,nbr)
 end
 

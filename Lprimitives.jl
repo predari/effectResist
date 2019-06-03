@@ -100,14 +100,15 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
     m = size(U,1)
     er = zeros(n)
     dr = zeros(n)
- 
+    cf = zeros(n)
+    
     distances = Array{Array{Float64, 1}}(n-1)
     for i in indices(distances,1) distances[i] = [] end
-    for i in 1:n-1
-        for j in i+1:n
-            push!(distances[i], 0.0)
-        end
-    end
+    # for i in 1:n-1
+    #     for j in i+1:n
+    #         push!(distances[i], 0.0)
+    #     end
+    # end
     for i = 1:k # q 
         # random gaussian projections Q
         r = randn(m) 
@@ -126,16 +127,18 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
         dr.+= v./k
         er.+= v.^2/k
     end
-    for i in 1:n-1
-        for j in 1:n-i
-            #println(i,",",j,",",j+i)
-            distances[i][j] += er[i] + er[j+i] - 2*dr[i]*dr[j+1]
-        end
+    # for i in 1:n-1
+    #     for j in 1:n-i
+    #         #println(i,",",j,",",j+i)
+    #         distances[i][j] = er[i] + er[j+i] - 2*dr[i]*dr[j+1]
+    #     end
+    # end
+    for i in 1:n
+        cf[i] = sum(er) + 4*er[i] -2(sum(dr))
     end
-    
-   #println(distances)
-  return distances;
 
+    #return distances;
+    return cf
 end
 
 function erJLT(G)
@@ -154,7 +157,6 @@ end
 function erJLT(G, alldistances)
     n = G.n
     cf = zeros(n)
-    distances = Array{Array{Float64, 1}}(n-1)
     A, L = sparseAdja(G)
     #er = LinvdiagSS(A;JLfac=20)
     #er = LinvdiagEdgeDist(A;JLfac=20)
@@ -164,10 +166,11 @@ function erJLT(G, alldistances)
     #u = 1
     #L2 = delnode2(L,u,n)
     #A2 = delnode2(A,u,n)
-    er = LinvdiagEdgeDist(A;JLfac=20)
+    distances = LinvdiagEdgeDist(A;JLfac=20)
+    println("distances size:", size(distances,1))
     #er = calculateNormFullDists(er, n)
     #    cf[i] = (n > 20000) ? (n/appxInvTrace(L2;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
-    return er
+    return distances
 end
 
 function erINV(G)

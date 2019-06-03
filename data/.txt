@@ -2,56 +2,56 @@
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
 ****** Running (chinese) approx ******
-	 node with argmax{c(211)} = 0.6997442964123374
+	 node with argmax{c(211)} = 0.7032364576715355
 ****** Running approx ******
-	 node with argmax{c(211)} = 0.7145847320118689
+	 node with argmax{c(211)} = 0.7680673969916479
 ---------------------out.adjnoun_adjacency_adjacency-------------------------- 
 Reading graph from edges list file out.adjnoun_adjacency_adjacency
 	 G.n: 112	 G.m: 425
 ****** Running (chinese) approx ******
 	 node with argmax{c(12)} = 3.0659030833580485
 ****** Running approx ******
-	 node with argmax{c(12)} = 3.048320891823987
+	 node with argmax{c(12)} = 3.277405567534997
 ---------------------out.arenas-email-------------------------- 
 Reading graph from edges list file out.arenas-email
 	 G.n: 1133	 G.m: 5451
 ****** Running (chinese) approx ******
-	 node with argmax{c(74)} = 2.8080156663973916
+	 node with argmax{c(74)} = 2.8004917423863946
 ****** Running approx ******
-	 node with argmax{c(74)} = 2.7952813939342938
+	 node with argmax{c(74)} = 2.95107658094993
 ---------------------out.arenas-jazz-new-------------------------- 
 Reading graph from edges list file out.arenas-jazz-new
 	 G.n: 198	 G.m: 2742
 ****** Running (chinese) approx ******
-	 node with argmax{c(2)} = 8.800441421069578
+	 node with argmax{c(30)} = 8.885970571921662
 ****** Running approx ******
-	 node with argmax{c(30)} = 9.045984215920502
+	 node with argmax{c(30)} = 9.723755603146756
 ---------------------out.maayan-vidal-------------------------- 
 Reading graph from edges list file out.maayan-vidal
 	 G.n: 2783	 G.m: 6007
 ****** Running (chinese) approx ******
-	 node with argmax{c(288)} = 1.2689093839874606
+	 node with argmax{c(288)} = 1.2686872494910353
 ****** Running approx ******
-	 node with argmax{c(288)} = 1.271073807343382
+	 node with argmax{c(288)} = 1.2898622112799292
 ---------------------out.opsahl-powergrid-------------------------- 
 Reading graph from edges list file out.opsahl-powergrid
 	 G.n: 4941	 G.m: 6594
 ****** Running (chinese) approx ******
-	 node with argmax{c(724)} = 0.2907337694856589
+	 node with argmax{c(645)} = 0.30175179304933364
 ****** Running approx ******
-	 node with argmax{c(657)} = 0.3051108033669438
+	 node with argmax{c(2674)} = 0.3854150686993867
 ---------------------out.petster-hamster-------------------------- 
 Reading graph from edges list file out.petster-hamster
 	 G.n: 2000	 G.m: 16098
 ****** Running (chinese) approx ******
-	 node with argmax{c(18)} = 3.482091154713549
+	 node with argmax{c(18)} = 3.477248794995463
 ****** Running approx ******
-	 node with argmax{c(18)} = 3.4614107984832883
+	 node with argmax{c(18)} = 3.5287398646380845
 ---------------------out.subelj_euroroad_euroroad-------------------------- 
 Reading graph from edges list file out.subelj_euroroad_euroroad
 	 G.n: 1039	 G.m: 1305
 ****** Running (chinese) approx ******
-	 node with argmax{c(159)} = 0.2461391074423023
+	 node with argmax{c(159)} = 0.244808229351156
 ****** Running approx ******
-	 node with argmax{c(159)} = 0.24046486258333652
+	 node with argmax{c(159)} = 0.2830018668967178
 -------------------------------------------------------- 
