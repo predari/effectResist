@@ -63,7 +63,7 @@ function allComp(mat:: SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
     if i == nc
         printf("Good!")
     end
-    return comps, nodes
+    return comps, nodes, nc
 end
 
     # sizes = map(x->length(x), cs)

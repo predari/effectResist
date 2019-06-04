@@ -62,7 +62,7 @@ function exact(G, alldistances, w :: IOStream)
         return distances
     else
         cf = calculateNodeDists(distances, G.n)
-        #println(cf)
+        println(cf)
         cf = calculateCF(cf, G.n)
         logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
              maximum(cf))
@@ -84,99 +84,6 @@ function exact(G, w :: IOStream)
 end
 
 
-function exact_comp(G, w :: IOStream)
-    logw(w,"****** Running exact components ******")
-    A =  sparseAdja2(G)
-    n = G.n
-    bg = bridges(LightGraphs.Graph(A))
-    println(bg)
-    distances = zeros(n,n)
-    # distances = Array{Array{Float64, 1}}(n-1)
-    # for i in indices(distances,1) distances[i] = [] end
-    # for i in 1:n-1
-    #     for j in i+1:n
-    #         push!(distances[i], 0.0)
-    #     end
-    # end
-    for e in bg
-        x = e.src
-        y = e.dst
-        #pull!(nbr[x][y])
-        A[x,y] = 0
-        A[y,x] = 0
-    end
-    dropzeros!(A)
-    comps, nodes = allComp(A)
-    println(comps)
-    println(nodes)
-    ncomps = 1
-    #println("Running components:")
-    for c in comps
-        println(c,ncomps)
-        if c.n != 1
-            C = sparsemat2Graph(c)
-            idx = nodes[ncomps]
-            println(idx)
-            ldistance = exact(C,1,w)
-            ldistance = full(ldistance)
-            s = size(ldistance,1)
-            println("component size:",s, ",", size(ldistance,2))
-            println(ldistance)
-            for i in 1:s
-                distances[idx[i],idx[i+1:end]] = ldistance[i]
-                println(idx[i],",",idx[i+1:end])
-                println(ldistance[i])
-            end
-        end
-        ncomps = ncomps + 1
-    end
-    for i in 1:n
-        for j in 1:n
-            if distances[i,j] != 0.0
-                distances[j,i] = distances[i,j]
-            end
-        end
-    end
-    
-    println(ncomps)
-    idx = []
-    for e in bg
-        x = e.src
-        y = e.dst
-        println(x,",",y)
-        #pull!(nbr[x][y])
-        if x < y 
-            distances[x,y] = 1
-            distances[y,x] = 1
-            for i in 1:ncomps
-                j = find(e -> e == x ,nodes[i])
-                if isempty(j) == false
-                    
-                    c = comps[i]
-                    idx = nodes[i]
-                    #println("(",c,",",idx,")")
-                    break; # (i,j) (component, idx in nodes)
-                end
-            end
-            #println("(",i,",",j,")")
-            idxr = filter!(e->e!=x,idx)
-            println(idxr)
-            for l in idxr
-                distances[l,y] = distances[l,x] + 1
-            end
-            for i in 1:n
-                for j in 1:n
-                    if distances[i,j] != 0.0
-                        distances[j,i] = distances[i,j]
-                    end
-                end
-            end
-        end
-    end
-    distances
-return distances
-end
-
 
 datadir = string(ARGS[1],"/")
 outFName=string(ARGS[1],".txt")
@@ -196,12 +103,12 @@ e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 #         logw(w," WARNING: Graph is not connected. Program will exit!");
 #         exit()
 #     end
-# #    @time exact(G,w)
-# #    @time exact(G,0,w)
-# #    @time approx(G,w)
+#     @time exact(G,w)
+#     @time exact(G,0,w)
+#     @time approx(G,w)
 #     @time approx(G,0,w)
 # end
-    logw(w, "-------------------------------------------------------- ")
+# logw(w, "-------------------------------------------------------- ")
 
 # L = LineGraph(7)
 # println(L)
@@ -211,12 +118,42 @@ m = 20
 Line = Components3Graph(n,m)
 println(Line)
 #exact_distance = exact(Line,1,w) # same as er_mppinv(Line)
-#exact(Line,w)
-#exact(Line,0,w)
-#approx(Line,w)
-#approx(Line,0,w)
-distances = exact_comp(Line, w)
-println(distances)
+exact(Line,w)
+exact(Line,0,w)
+approx(Line,w)
+approx(Line,0,w)
+#distances = exact_comp(Line, w)
+#println(distances)
+Line = ComponentExtnodes3Graph(7, 16)
+println(Line)
+exact(Line,w)
+exact(Line,0,w)
+approx(Line,w)
+approx(Line,0,w)
+nbr = Array{Array{Int, 1}}(4)
+for i in indices(nbr,1) nbr[i] = [] end
+push!(nbr[1], 2)
+push!(nbr[1], 3)
+push!(nbr[2], 1)
+push!(nbr[2], 4)
+push!(nbr[2], 3)
+push!(nbr[3], 1)
+push!(nbr[3], 2)
+push!(nbr[3], 4)
+push!(nbr[4], 3)
+push!(nbr[4], 2)
+rLine = Graph(4,10,nbr)
+println(rLine)
+exact(rLine,w)
+exact(rLine,0,w)
+approx(rLine,w)
+approx(rLine,0,w)
+Line = Component2sExtnodes3Graph(10, 24)
+println(Line)
+exact(Line,w)
+exact(Line,0,w)
+approx(Line,w)
+approx(Line,0,w)
 
 
     #T1 = akpwU(A);

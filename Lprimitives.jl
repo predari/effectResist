@@ -102,8 +102,8 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
     dr = zeros(n)
     cf = zeros(n)
     
-    distances = Array{Array{Float64, 1}}(n-1)
-    for i in indices(distances,1) distances[i] = [] end
+    # distances = Array{Array{Float64, 1}}(n-1)
+    # for i in indices(distances,1) distances[i] = [] end
     # for i in 1:n-1
     #     for j in i+1:n
     #         push!(distances[i], 0.0)
@@ -134,7 +134,7 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
     #     end
     # end
     for i in 1:n
-        cf[i] = sum(er) + 4*er[i] -2(sum(dr))
+        cf[i] = sum(er) + (n-1)*er[i] -2dr[i]*(sum(dr))
     end
 
     #return distances;
@@ -166,7 +166,7 @@ function erJLT(G, alldistances)
     #u = 1
     #L2 = delnode2(L,u,n)
     #A2 = delnode2(A,u,n)
-    distances = LinvdiagEdgeDist(A;JLfac=20)
+    distances = LinvdiagEdgeDist(A;JLfac=200)
     println("distances size:", size(distances,1))
     #er = calculateNormFullDists(er, n)
     #    cf[i] = (n > 20000) ? (n/appxInvTrace(L2;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
@@ -202,6 +202,7 @@ function erINV(G, alldistances)
     # inv or mppinv? TODO!
     Linv = inv(L2)
     distances = calculateCommuteDists(Linv, n, u)
+    println(distances)
     return distances
 end
 
