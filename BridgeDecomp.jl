@@ -86,6 +86,17 @@ function delextnode(a::Array{Float64}, node:: Array{Int64,1}, len :: Int64)
     return a
 end
 
+
+function checkDistancesComponent(cf,A :: SparseMatrixCSC{Float64})
+    res1 = calculateCF(cf, A.n)
+    res2 = calculateCF(localApprox(A, 0, w), A.n)
+    if res1 == res2
+        println(":) - The distance calculations are correct!")
+    else
+        println(":( - Please check again your distances calculations!") 
+    end
+end
+
 function LinvDistance(a::SparseMatrixCSC{Float64}, extnode::Integer; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     f = approxCholLap(a,tol=1e-5);
     n = size(a,1)
@@ -170,14 +181,15 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
 end
 
 
-function localApprox(A, brg :: Bridges, w :: IOStream)
+#function localApprox(A, brg :: Bridges, w :: IOStream)
+function localApprox(A, extnodes:: Array{Int64,1}, size::Integer , w :: IOStream)
     logw(w,"****** Running approx ******")
     n = A.n
-    distances = LinvDistance(A,brg.nodes,brg.n;JLfac=200)
+    distances = LinvDistance(A,extnodes,size;JLfac=200)
     return sum(distances,2);
 end
 
-function localApprox(A, extnode, w :: IOStream)
+function localApprox(A, extnode:: Integer, w :: IOStream)
     logw(w,"****** Running approx ******")
     n = A.n
     distances = LinvDistance(A,extnode;JLfac=200)
@@ -242,8 +254,12 @@ function cfcAccelerate(G, w :: IOStream)
     # println(sizes)
     # println(sl)
 
-    for c in C
-        
+    for (idx, c) in enumerate(C)
+        if c.nc != 1
+            cf = zeros(Float64,c,nc,c.bdryc)
+            cf localApprox(c.A, c.bdry, c.bdryc , w )
+            checkDistancesComponent(cf, c.A)
+        end
     end
     
     
