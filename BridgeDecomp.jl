@@ -170,6 +170,7 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
 
     for (idx, u) in enumerate(bdry)
         println("$idx $u")
+        findin()
         cf[u,1] = sumer2 + n*er2[u] -2er[u]*sumer
         for i in 1:n
             cf[i,idx] = er2[i] + er2[u] -2er[i]*er[u]
@@ -187,11 +188,98 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
 end
 
 
+function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bsize:: Int64, nodes::Array{Int64,1} ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+    if 0 in bdry
+        println("Error: node index cannot be zero!");
+        exit(0)
+    end
+    f = approxCholLap(a,tol=1e-5);
+    n = size(a,1)
+    k = round(Int, JLfac*log(n)) # number of dims for JL    
+    U = wtedEdgeVertexMat(a)
+    m = size(U,1)
+
+    er = zeros(n)
+    er2 = zeros(n)
+    cf = zeros(n, bsize + 1)
+    ## first position for d(u,v not in bdry). For d(u,bdry)
+    ## position in cf is the same as in the bdry array
+
+    for i = 1:k # q 
+        r = randn(m) 
+        ur = U'*r 
+        v = zeros(n)
+        v = f(ur[:])
+        er.+= v./k
+        er2.+= v.^2/k
+    end
+
+    sumer2 = sum(er2)
+    sumer = sum(er)
+
+    ## TODO: change to: for (idx, u) in enumerate(bdry)
+    lu_array = Array{Int64,1}(bsize)
+    for (idx, u) in enumerate(bdry)
+        tmp = findin(nodes, u)
+        lu = tmp[1] ## TODO: why I need to convert
+        #println("$idx $u")
+        lu_array[idx] = lu
+        cf[lu, 1] = sumer2 + n*er2[lu] -2er[lu]*sumer
+        for i in 1:n
+            cf[i, idx + 1] = er2[i] + er2[lu] -2er[i]*er[lu]
+        end
+        ## or remove node u from er2 and er here already
+        ## no need to store in this case.
+    end
+    println(lu_array)
+    sumdeler2 = sum(delextnode(er2, lu_array, bsize))
+    sumdeler = sum(delextnode(er, lu_array, bsize))
+    for i in 1:n
+        if (i in lu_array) == false
+            cf[i,1] = sumdeler2 + (n-1)*er2[i] -2er[i]*sumdeler
+        end
+    end
+    return cf
+end
+
+
+
+# TODO: remove
+function delnode2(L, v, t)
+    return L[[1:v-1;v+1:t], [1:v-1;v+1:t]]
+end
+
+# TODO: remove
+function erINV(G, alldistances)    
+    n = G.n;
+    er = zeros(n)
+    L = lapl(G)
+    u = 1
+    L2 = delnode2(L,u,n)
+    Linv = inv(L2)
+    distances = calculateCommuteDists(Linv, n, u)
+    println(distances)
+    return distances
+end
+
+
+function exact(G, w :: IOStream)
+    logw(w,"****** Running (my) exact ******")
+    distances = erINV(G,1)
+    cf = calculateNodeDists(distances, G.n)
+    println(cf)
+    cf = calculateCF(cf, G.n)
+    logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
+         maximum(cf))
+    return cf
+end
+
 #function localApprox(A, brg :: Bridges, w :: IOStream)
 function localApprox(A, extnodes:: Array{Int64,1}, size::Integer , w :: IOStream)
     logw(w,"****** Running approx ******")
     n = A.n
     distances = LinvDistance(A,extnodes,size;JLfac=200)
+    println(distances)
     return sum(distances,2);
 end
 
@@ -199,12 +287,12 @@ function localApprox(A, extnode:: Integer, w :: IOStream)
     logw(w,"****** Running approx ******")
     n = A.n
     distances = LinvDistance(A,extnode;JLfac=200)
+    println(distances)
     return sum(distances,2);
 end
 
 function localApprox(c :: Component, w :: IOStream)
-    A = c.A
-    TODO!!!!
+    LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap) 
 end
 
 function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
@@ -253,8 +341,8 @@ function cfcAccelerate(G, w :: IOStream)
     println("** Rate of bdrynodes compared to all nodes:", B.n*100/n,"% (",B.n,"/",n,")")
     println("** Number of components:", ncmps)
     println("** Max component size:", C[maxc].nc," bdrynodes:", C[maxc].bdryc/C[maxc].nc,"%")
-    #println("Bridges:")
-    #printBridges(B)
+    println("Bridges:")
+    printBridges(B)
     # println("Components[",ncmps,"]:")
     # for i in 1:ncmps
     #       printComponent(C[i])
@@ -269,10 +357,16 @@ function cfcAccelerate(G, w :: IOStream)
         if c.nc != 1
             println("Component[",idx,"]:")
             printComponent(c)
-            cf = zeros(Float64,c.nc,c.bdryc)
+            #cf = zeros(Float64,c.nc,c.bdryc)
             #cf = localApprox(c.A, c.bdry, c.bdryc , w )
+            cf = localApprox(c.A, 0, w)
+            println("Approx result: ", cf)
             cf = localApprox(c, w)
-            checkDistancesComponent(cf, c.A)
+            println("Components result: ", cf)
+            #checkDistancesComponent(cf, c.A)
+            cf = exact(sparsemat2Graph(c.A), w )
+            println("Exact result: ", cf)
+            #checkDistancesComponent(cf, c.A)
         end
     end
     
@@ -338,8 +432,8 @@ m = 20
 Line = Components3Graph(n,m)
 println(Line)
 cf = localApproxTest(Line,0, w)
-logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 println(cf)
+logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 cfcAccelerate(Line,w)
 #distances = cfcaccelerate(Line, w)
 #println(distances)
