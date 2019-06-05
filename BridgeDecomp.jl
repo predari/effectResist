@@ -87,9 +87,12 @@ function delextnode(a::Array{Float64}, node:: Array{Int64,1}, len :: Int64)
 end
 
 
-function checkDistancesComponent(cf,A :: SparseMatrixCSC{Float64})
+function checkDistancesComponent(cf, A :: SparseMatrixCSC{Float64})
+    println(cf)
     res1 = calculateCF(cf, A.n)
-    res2 = calculateCF(localApprox(A, 0, w), A.n)
+    cf2 = localApprox(A, 0, w)
+    println(cf2)
+    res2 = calculateCF(cf2, A.n)
     if res1 == res2
         println(":) - The distance calculations are correct!")
     else
@@ -163,15 +166,18 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
     sumer2 = sum(er2)
     sumer = sum(er)
 
-    for j in 1:bdry
-        cf[bdry[j],1] = sumer2 + n*er2[bdry[j]] -2er[bdry[j]]*sumer
+    ## TODO: change to: for (idx, u) in enumerate(bdry)
+
+    for (idx, u) in enumerate(bdry)
+        println("$idx $u")
+        cf[u,1] = sumer2 + n*er2[u] -2er[u]*sumer
         for i in 1:n
-            cf[i,j + 1] = er2[i] + er2[bdry[j]] -2er[i]*er[bdry[j]]
+            cf[i,idx] = er2[i] + er2[u] -2er[i]*er[u]
         end
     end
     
-    sumdeler2 = sum(delextnode(er2,bdry,len))
-    sumdeler = sum(delextnode(er,bdry),len)
+    sumdeler2 = sum(delextnode(er2, bdry, bdryc))
+    sumdeler = sum(delextnode(er, bdry, bdryc))
     for i in 1:n
         if (i in bdry) == false
             cf[i,1] = sumdeler2 + (n-1)*er2[i] -2er[i]*sumdeler
@@ -244,10 +250,10 @@ function cfcAccelerate(G, w :: IOStream)
     println("** Max component size:", C[maxc].nc," bdrynodes:", C[maxc].bdryc/C[maxc].nc,"%")
     #println("Bridges:")
     #printBridges(B)
-    #println("Components[",ncmps,"]:")
-    #for i in 1:ncmps
+    # println("Components[",ncmps,"]:")
+    # for i in 1:ncmps
     #       printComponent(C[i])
-    #end
+    # end
     #    
     # sizes = map(x->length(x), mapping)
     # sl = sortperm(sizes)
@@ -256,8 +262,10 @@ function cfcAccelerate(G, w :: IOStream)
 
     for (idx, c) in enumerate(C)
         if c.nc != 1
-            cf = zeros(Float64,c,nc,c.bdryc)
-            cf localApprox(c.A, c.bdry, c.bdryc , w )
+            println("Component[",idx,"]:")
+            printComponent(c)
+            cf = zeros(Float64,c.nc,c.bdryc)
+            cf = localApprox(c.A, c.bdry, c.bdryc , w )
             checkDistancesComponent(cf, c.A)
         end
     end
@@ -302,20 +310,20 @@ datadir = string(ARGS[1],"/")
 outFName=string(ARGS[1],".txt")
 w = open(outFName, "w")
 
-for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
-    logw(w, "---------------------",rFile,"-------------------------- ")
-    logw(w, "Reading graph from edges list file ", rFile)
-    G = read_file(string(datadir,rFile))
-    logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
-    A, L = sparseAdja(G)
-    if !Laplacians.isConnected(A)
-        logw(w," WARNING: Graph is not connected. Program will exit!");
-        exit()
-    end
-    #cf = localApproxTest(G, 0, w)
-    #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-    cfcAccelerate(G, w)
-end
+# for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
+#     logw(w, "---------------------",rFile,"-------------------------- ")
+#     logw(w, "Reading graph from edges list file ", rFile)
+#     G = read_file(string(datadir,rFile))
+#     logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
+#     A, L = sparseAdja(G)
+#     if !Laplacians.isConnected(A)
+#         logw(w," WARNING: Graph is not connected. Program will exit!");
+#         exit()
+#     end
+#     #cf = localApproxTest(G, 0, w)
+#     #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+#     cfcAccelerate(G, w)
+# end
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
