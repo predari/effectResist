@@ -202,6 +202,11 @@ function localApprox(A, extnode:: Integer, w :: IOStream)
     return sum(distances,2);
 end
 
+function localApprox(c :: Component, w :: IOStream)
+    A = c.A
+    TODO!!!!
+end
+
 function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
     nodes =  Array{Int64, 1}()
     for e in brs
@@ -265,7 +270,8 @@ function cfcAccelerate(G, w :: IOStream)
             println("Component[",idx,"]:")
             printComponent(c)
             cf = zeros(Float64,c.nc,c.bdryc)
-            cf = localApprox(c.A, c.bdry, c.bdryc , w )
+            #cf = localApprox(c.A, c.bdry, c.bdryc , w )
+            cf = localApprox(c, w)
             checkDistancesComponent(cf, c.A)
         end
     end
