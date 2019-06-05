@@ -86,6 +86,43 @@ function delextnode(a::Array{Float64}, node:: Array{Int64,1}, len :: Int64)
     return a
 end
 
+function LinvDistance(a::SparseMatrixCSC{Float64}, extnode::Integer; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+    f = approxCholLap(a,tol=1e-5);
+    n = size(a,1)
+    k = round(Int, JLfac*log(n)) # number of dims for JL
+    U = wtedEdgeVertexMat(a)
+    m = size(U,1)
+ 
+     er = zeros(n)
+     er2 = zeros(n)
+     cf = zeros(n,2)
+ 
+    for i = 1:k # q 
+        r = randn(m) 
+        ur = U'*r 
+        v = zeros(n)
+        v = f(ur[:])
+        er.+= v./k
+        er2.+= v.^2/k
+    end
+
+    if extnode != 0
+        for i in 1:n
+            cf[i,2] = er2[i] + er2[extnode] -2er[i]*er[extnode]
+        end
+    end
+    sumer2 = sum(delextnode(er2,extnode))
+    sumer = sum(delextnode(er,extnode))
+
+    for i in 1:n
+         cf[i,1] = sumer2 + (n-1)*er2[i] -2er[i]*sumer
+     end
+     return cf
+end
+
+
+
+
 function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::Int64 ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     if 0 in bdryc
         println("Error: node index cannot be zero!");
@@ -140,10 +177,10 @@ function localApprox(A, brg :: Bridges, w :: IOStream)
     return sum(distances,2);
 end
 
-function localApprox(A, w :: IOStream)
+function localApprox(A, extnode, w :: IOStream)
     logw(w,"****** Running approx ******")
     n = A.n
-    distances = LinvDistance(A,0;JLfac=200)
+    distances = LinvDistance(A,extnode;JLfac=200)
     return sum(distances,2);
 end
 
