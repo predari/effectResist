@@ -231,7 +231,7 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bsize::
         ## or remove node u from er2 and er here already
         ## no need to store in this case.
     end
-    println(lu_array)
+    #println("Bdry nodes (local numb):", lu_array)
     sumdeler2 = sum(delextnode(er2, lu_array, bsize))
     sumdeler = sum(delextnode(er, lu_array, bsize))
     for i in 1:n
@@ -267,7 +267,7 @@ function exact(G, w :: IOStream)
     logw(w,"****** Running (my) exact ******")
     distances = erINV(G,1)
     cf = calculateNodeDists(distances, G.n)
-    println(cf)
+    println("Exact distance:",cf)
     cf = calculateCF(cf, G.n)
     logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
          maximum(cf))
@@ -292,7 +292,17 @@ function localApprox(A, extnode:: Integer, w :: IOStream)
 end
 
 function localApprox(c :: Component, w :: IOStream)
-    LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap) 
+    distances = LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap)
+    ### TODO: quick checking here
+    ### TODO: check properly later
+    dim2 = size(distances,2)
+    println(dim2)
+    for i in 2:dim2
+        distances[:,1] = distances[:,1] - distances[:,i]
+    end
+    println(distances)
+    
+    return sum(distances,2)
 end
 
 function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
@@ -360,12 +370,11 @@ function cfcAccelerate(G, w :: IOStream)
             #cf = zeros(Float64,c.nc,c.bdryc)
             #cf = localApprox(c.A, c.bdry, c.bdryc , w )
             cf = localApprox(c.A, 0, w)
-            println("Approx result: ", cf)
+            println("Approx distance: ", cf)
             cf = localApprox(c, w)
-            println("Components result: ", cf)
+            println("Approx-comp distance: ", cf)
             #checkDistancesComponent(cf, c.A)
             cf = exact(sparsemat2Graph(c.A), w )
-            println("Exact result: ", cf)
             #checkDistancesComponent(cf, c.A)
         end
     end
@@ -432,7 +441,6 @@ m = 20
 Line = Components3Graph(n,m)
 println(Line)
 cf = localApproxTest(Line,0, w)
-println(cf)
 logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 cfcAccelerate(Line,w)
 #distances = cfcaccelerate(Line, w)

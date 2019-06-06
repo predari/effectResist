@@ -253,3 +253,16 @@ function AlmostLineGraph(n:: Int, m:: Int)
     push!(nbr[4], 2)
     return Graph(n,m,nbr)
 end
+
+
+function TriangleGraph(n:: Int, m:: Int)
+    nbr = Array{Array{Int, 1}}(n)
+    for i in indices(nbr,1) nbr[i] = [] end
+    push!(nbr[1], 2)
+    push!(nbr[1], 3)
+    push!(nbr[2], 3)
+    push!(nbr[2], 1)
+    push!(nbr[3], 1)
+    push!(nbr[3], 2)
+    return Graph(n,m,nbr)
+end

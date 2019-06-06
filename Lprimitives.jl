@@ -167,7 +167,7 @@ function erJLT(G, alldistances)
     #L2 = delnode2(L,u,n)
     #A2 = delnode2(A,u,n)
     distances = LinvdiagEdgeDist(A;JLfac=200)
-    println("distances size:", size(distances,1))
+    #println("distances size:", size(distances,1))
     #er = calculateNormFullDists(er, n)
     #    cf[i] = (n > 20000) ? (n/appxInvTrace(L2;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
     return distances
