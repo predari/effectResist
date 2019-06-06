@@ -8,12 +8,14 @@ using Laplacians
 using LightGraphs
 #using LightGraphs.SimpleEdge
 
-struct Component
+mutable struct Component
     A:: SparseMatrixCSC{Float64}
     nc::Int64
     nodemap::Array{Int64,1} # size of nc
     bdry::Array{Int64,1} # bdry nodes in Cluster
     bdryc::Int64
+    distances:: Array{Float64}
+    external::Array{Int64,1}
 end
 
 # struct SimpleEdge{T<:Integer} #<: AbstractSimpleEdge{T}
@@ -31,7 +33,18 @@ struct Bridges
 end
 
 Component(A::SparseMatrixCSC{Float64},nodemap::Array{Int64,1}) = Component(A, A.n, nodemap,
-                                                                           nothing, 0)
+                                                                           nothing, 0,
+                                                                           #zeros(A.n)
+                                                                           )
+
+function addExtnodesInComponent(c:: Component, external:: Array{Int64,1})
+    if c.external == nothing
+        c.external = external
+    end
+end
+
+
+                                                                         
 Bridges(edges, nodes) =
     Bridges(edges, size(edges,1),
             nodes,
@@ -52,6 +65,7 @@ function printComponent(C:: Component)
     println("- list of nodes=",C.nodemap)
     println("- list of bdry=",C.bdry)
     println("- bdry.n=",C.bdryc," (",100*C.bdryc/C.nc,"%)")
+    println("- list of external=",C.external)
 end
 
 function printEdges(edges:: Array{LightGraphs.SimpleGraphs.SimpleEdge{Int64},1})
@@ -169,7 +183,7 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
     ## TODO: change to: for (idx, u) in enumerate(bdry)
 
     for (idx, u) in enumerate(bdry)
-        println("$idx $u")
+        #println("$idx $u")
         findin()
         cf[u,1] = sumer2 + n*er2[u] -2er[u]*sumer
         for i in 1:n
@@ -279,7 +293,7 @@ function localApprox(A, extnodes:: Array{Int64,1}, size::Integer , w :: IOStream
     logw(w,"****** Running approx ******")
     n = A.n
     distances = LinvDistance(A,extnodes,size;JLfac=200)
-    println(distances)
+    #println(distances)
     return sum(distances,2);
 end
 
@@ -287,7 +301,7 @@ function localApprox(A, extnode:: Integer, w :: IOStream)
     logw(w,"****** Running approx ******")
     n = A.n
     distances = LinvDistance(A,extnode;JLfac=200)
-    println(distances)
+    #println(distances)
     return sum(distances,2);
 end
 
@@ -296,12 +310,11 @@ function localApprox(c :: Component, w :: IOStream)
     ### TODO: quick checking here
     ### TODO: check properly later
     dim2 = size(distances,2)
-    println(dim2)
     for i in 2:dim2
         distances[:,1] = distances[:,1] - distances[:,i]
     end
-    println(distances)
-    
+    #println(distances)
+    c.distances = distances
     return sum(distances,2)
 end
 
@@ -326,10 +339,8 @@ function cfcAccelerate(G, w :: IOStream)
     A =  sparseAdja2(G)
     n = G.n
     edges = bridges(LightGraphs.Graph(A))
-    #println(brs)
     nedges = size(edges,1)
-    #println(nbrs)
-    #println(100*nbrs/n, "% edges")
+    #println(100*edges/n, "% edges")
     A, extnodes = removeBridges(A, edges, nedges)
     B = Bridges(edges, extnodes)
     cmps, map, ncmps = allComp(A)
@@ -339,7 +350,8 @@ function cfcAccelerate(G, w :: IOStream)
         bdry = intersect(map[i], extnodes)
         index = findin(B.nodes,bdry)
         B.comp[index] = i 
-        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,size(bdry,1))
+        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,size(bdry,1),
+                         zeros(cmps[i].n,size(bdry,1)), zeros(size(bdry,1)))
         if cmps[i].n >= maxc
             maxc = i
         end
@@ -348,11 +360,11 @@ function cfcAccelerate(G, w :: IOStream)
         println("Error!")
         exit(0)
     end
-    println("** Rate of bdrynodes compared to all nodes:", B.n*100/n,"% (",B.n,"/",n,")")
-    println("** Number of components:", ncmps)
-    println("** Max component size:", C[maxc].nc," bdrynodes:", C[maxc].bdryc/C[maxc].nc,"%")
-    println("Bridges:")
-    printBridges(B)
+    #println("** Rate of bdrynodes compared to all nodes:", B.n*100/n,"% (",B.n,"/",n,")")
+    #println("** Number of components:", ncmps)
+    #println("** Max component size:", C[maxc].nc," bdrynodes:", C[maxc].bdryc/C[maxc].nc,"%")
+    #println("Bridges:")
+    # printBridges(B)
     # println("Components[",ncmps,"]:")
     # for i in 1:ncmps
     #       printComponent(C[i])
@@ -363,21 +375,55 @@ function cfcAccelerate(G, w :: IOStream)
     # println(sizes)
     # println(sl)
 
+    
     for (idx, c) in enumerate(C)
         if c.nc != 1
-            println("Component[",idx,"]:")
-            printComponent(c)
+            #println("Component[",idx,"]:")
+            #printComponent(c)
             #cf = zeros(Float64,c.nc,c.bdryc)
-            #cf = localApprox(c.A, c.bdry, c.bdryc , w )
-            cf = localApprox(c.A, 0, w)
-            println("Approx distance: ", cf)
+            #cf = localApprox(c.A, 0, w)
+            #println("Approx distance: ", cf)
             cf = localApprox(c, w)
-            println("Approx-comp distance: ", cf)
+            #println("Approx-comp distance: ", cf)
             #checkDistancesComponent(cf, c.A)
-            cf = exact(sparsemat2Graph(c.A), w )
+            #cf = exact(sparsemat2Graph(c.A), w )
             #checkDistancesComponent(cf, c.A)
         end
     end
+    #### for all bridges that connect one-core components with other components
+    for (idxu, u) in enumerate(B.nodes)
+        v = u
+        
+        i = B.comp[idxu]
+        if C[i].nc == 1
+            for e in B.edges
+                if e.src == u
+                    v = e.dst
+                    break;
+                elseif e.dst == u
+                    v = e.src
+                    break;
+                end
+                #todo:remove e pop!
+            end
+            tmp = C[B.comp[findin(B.nodes,v)]]
+            c=tmp[1]
+            #println("component fkfakljdfhjdfhjkdfhkdjhc", j)
+            #c = getindex(C,j)
+            #printComponent(j)
+            #println(c.external)
+            #println(c.bdry)
+            #println(c.nodemap)
+            #println(v)
+            #println(findin(c.bdry, v))
+            c.external[findin(c.bdry, v)] = c.external[findin(c.bdry, v)] + 1
+        end 
+    end
+    # println("Lets see if updated!!!")
+    # println("Components[",ncmps,"]:")
+    # for i in 1:ncmps
+    #       printComponent(C[i])
+    # end
     
     
     #println(cmps)
@@ -419,33 +465,35 @@ datadir = string(ARGS[1],"/")
 outFName=string(ARGS[1],".txt")
 w = open(outFName, "w")
 
-# for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
-#     logw(w, "---------------------",rFile,"-------------------------- ")
-#     logw(w, "Reading graph from edges list file ", rFile)
-#     G = read_file(string(datadir,rFile))
-#     logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
-#     A, L = sparseAdja(G)
-#     if !Laplacians.isConnected(A)
-#         logw(w," WARNING: Graph is not connected. Program will exit!");
-#         exit()
-#     end
-#     #cf = localApproxTest(G, 0, w)
-#     #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-#     cfcAccelerate(G, w)
-# end
-
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
 n = 8
 m = 20
 Line = Components3Graph(n,m)
 println(Line)
-cf = localApproxTest(Line,0, w)
+@time cf = localApproxTest(Line,0, w)
 logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-cfcAccelerate(Line,w)
+@time cfcAccelerate(Line,w)
 #distances = cfcaccelerate(Line, w)
 #println(distances)
 logw(w, "-------------------------------------------------------- ")
+
+
+for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
+    logw(w, "---------------------",rFile,"-------------------------- ")
+    logw(w, "Reading graph from edges list file ", rFile)
+    G = read_file(string(datadir,rFile))
+    logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
+    A, L = sparseAdja(G)
+    if !Laplacians.isConnected(A)
+        logw(w," WARNING: Graph is not connected. Program will exit!");
+        exit()
+    end
+    @time cf = localApproxTest(G, 0, w)
+    logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+    @time cfcAccelerate(G, w)
+end
+
 
 
 
