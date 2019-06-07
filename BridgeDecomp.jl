@@ -94,10 +94,11 @@ function delextnode(a::Array{Float64}, node::Int64)
 end
 
 function delextnode(a::Array{Float64}, node:: Array{Int64,1}, len :: Int64)
+    a2 = a
     for i in 1:len
-        a = filter!(e->e!=node[i],a)
+        a2 = filter!(e->e!=node[i],a2)
     end
-    return a
+    return a2
 end
 
 
@@ -202,6 +203,92 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
 end
 
 
+function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+    a = c.A
+    n = c.nc
+    nodes = c.nodemap
+    bdry = c.bdry
+    external = c.external
+    #println(nodes)
+    #println(bdry)
+    #println(external)
+    sz = count(x->x==0,external)
+    if 0 in bdry
+        println("Error: node index cannot be zero!");
+        exit(0)
+    end
+    
+    f = approxCholLap(a,tol=1e-5);
+    k = round(Int, JLfac*log(n)) # number of dims for JL    
+    U = wtedEdgeVertexMat(a)
+    m = size(U,1)
+
+    er = zeros(n)
+    er2 = zeros(n)
+    ## first position for Sigma(d(u,v: where v not in bdry)). For d(u,bdry)
+    ## position in cf is the same as in the bdry array
+    cf = zeros(n, sz + 1)
+    
+    for i = 1:k # q 
+        r = randn(m) 
+        ur = U'*r 
+        v = zeros(n)
+        v = f(ur[:])
+        er.+= v./k
+        er2.+= v.^2/k
+    end
+    
+    sumer = sum(er)    
+    sumer2 = sum(er2)
+
+    # BAD JULIA
+    links2core = zeros(Int64,sz)
+    szc = 1
+    #links2core = Array{Int64,1}(sz)
+    for (idx, u) in enumerate(bdry)
+        if external[idx] == 0
+            #push!(links2core,u)
+            links2core[szc] = u
+            szc = szc + 1
+        end
+    end
+    #println("Links2core (global numb):",links2core)
+    links1core = setdiff(bdry,links2core)
+    #println("Links1core (global numb):",links1core)
+    l2c_idx = findin(nodes, links2core)
+    #println("l2c_idx (local numb):", l2c_idx)
+    l1c_idx = findin(nodes, links1core)
+    #println("l1c_idx (local numb):", l1c_idx)
+
+    for (idx, u) in enumerate(l2c_idx)
+        for i in 1:n
+            cf[i, idx + 1] = er2[i] + er2[u] -2er[i]*er[u]
+        end
+        sumer = sumer - er[u]
+        sumer2 = sumer2 - er2[u]
+    end
+
+    multiplier = external[findin(bdry,getindex(nodes,l1c_idx))]
+    #println("l1c_idx (local numb):", l1c_idx)
+    #println("multiplier :", multiplier)
+    
+    for u in 1:n
+        cf[u,1] =  sumer2 + (n-sz)*er2[u] -2er[u]*sumer
+        ### I do the following for one extra time for u == v.
+        ### To avoid do for v in setdiff(l1c_idx,u), but then
+        ### the idx should be recomputed with findin etc.
+        for (idx, v) in enumerate(l1c_idx) 
+            cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * multiplier[idx] + multiplier[idx]
+        end
+    end
+    return cf
+end
+
+
+
+
+
+
 function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bsize:: Int64, nodes::Array{Int64,1} ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     if 0 in bdry
         println("Error: node index cannot be zero!");
@@ -212,7 +299,8 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bsize::
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(a)
     m = size(U,1)
-
+    println(bdry)
+    println(n)
     er = zeros(n)
     er2 = zeros(n)
     cf = zeros(n, bsize + 1)
@@ -228,31 +316,46 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bsize::
         er2.+= v.^2/k
     end
 
+    println("old er2", er2)
     sumer2 = sum(er2)
     sumer = sum(er)
-
+    println("size er2: ",size(er2,1))
     ## TODO: change to: for (idx, u) in enumerate(bdry)
     lu_array = Array{Int64,1}(bsize)
     for (idx, u) in enumerate(bdry)
         tmp = findin(nodes, u)
         lu = tmp[1] ## TODO: why I need to convert
-        #println("$idx $u")
+        println("idx:$idx global-u:$u")
         lu_array[idx] = lu
-        cf[lu, 1] = sumer2 + n*er2[lu] -2er[lu]*sumer
+        #cf[lu, 1] = sumer2 + n*er2[lu] -2er[lu]*sumer
+        println("cf of local-link $lu:",cf[lu,1])
         for i in 1:n
             cf[i, idx + 1] = er2[i] + er2[lu] -2er[i]*er[lu]
         end
         ## or remove node u from er2 and er here already
         ## no need to store in this case.
     end
-    #println("Bdry nodes (local numb):", lu_array)
-    sumdeler2 = sum(delextnode(er2, lu_array, bsize))
-    sumdeler = sum(delextnode(er, lu_array, bsize))
-    for i in 1:n
-        if (i in lu_array) == false
-            cf[i,1] = sumdeler2 + (n-1)*er2[i] -2er[i]*sumdeler
-        end
+    println("Bdry nodes (local numb):", lu_array)
+    # sumdeler2 = sum(er2) #delextnode(er2, lu_array, bsize)
+    # sumdeler = sum(er2) #delextnode(er, lu_array, bsize)
+
+    for i in lu_array
+        sumer = sumer -er[i]
+        sumer2 = sumer2 -er2[i]
     end
+#    println("new er2", ll)
+#    println("old er2", er2)
+#    sumdeler2 = sum(ll)
+#    sumdeler = sum(delextnode(er, lu_array, bsize))
+#    if (n - bsize) != size(ll,1)
+#        println(n - bsize, size(ll,1))
+#        println("ERROR: something is wrong!!")
+#    end
+    for i in 1:n
+        #if (i in lu_array) == false
+            # (n-1) before
+            cf[i,1] = sumer2 + (n-bsize)*er2[i] -2er[i]*sumer
+     end
     return cf
 end
 
@@ -306,16 +409,13 @@ function localApprox(A, extnode:: Integer, w :: IOStream)
 end
 
 function localApprox(c :: Component, w :: IOStream)
-    distances = LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap)
-    ### TODO: quick checking here
-    ### TODO: check properly later
-    dim2 = size(distances,2)
-    for i in 2:dim2
-        distances[:,1] = distances[:,1] - distances[:,i]
-    end
+    distances = LinvDistance(c)
+    #distances = LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap)
+    #println(distances)
+    distances = sum(distances,2)
     #println(distances)
     c.distances = distances
-    return sum(distances,2)
+    return distances
 end
 
 function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
@@ -363,7 +463,7 @@ function cfcAccelerate(G, w :: IOStream)
     #println("** Rate of bdrynodes compared to all nodes:", B.n*100/n,"% (",B.n,"/",n,")")
     #println("** Number of components:", ncmps)
     #println("** Max component size:", C[maxc].nc," bdrynodes:", C[maxc].bdryc/C[maxc].nc,"%")
-    #println("Bridges:")
+    # println("Bridges:")
     # printBridges(B)
     # println("Components[",ncmps,"]:")
     # for i in 1:ncmps
@@ -374,22 +474,7 @@ function cfcAccelerate(G, w :: IOStream)
     # sl = sortperm(sizes)
     # println(sizes)
     # println(sl)
-
-    
-    for (idx, c) in enumerate(C)
-        if c.nc != 1
-            #println("Component[",idx,"]:")
-            #printComponent(c)
-            #cf = zeros(Float64,c.nc,c.bdryc)
-            #cf = localApprox(c.A, 0, w)
-            #println("Approx distance: ", cf)
-            cf = localApprox(c, w)
-            #println("Approx-comp distance: ", cf)
-            #checkDistancesComponent(cf, c.A)
-            #cf = exact(sparsemat2Graph(c.A), w )
-            #checkDistancesComponent(cf, c.A)
-        end
-    end
+    #### stage one now
     #### for all bridges that connect one-core components with other components
     for (idxu, u) in enumerate(B.nodes)
         v = u
@@ -419,6 +504,34 @@ function cfcAccelerate(G, w :: IOStream)
             c.external[findin(c.bdry, v)] = c.external[findin(c.bdry, v)] + 1
         end 
     end
+    ### end of stage one
+
+    # println("Bridges:")
+    # printBridges(B)
+    # println("Components[",ncmps,"]:")
+    # for i in 1:ncmps
+    #     printComponent(C[i])
+    # end
+
+    
+    for (idx, c) in enumerate(C)
+        if c.nc != 1
+            #println("Component[",idx,"]:")
+            #printComponent(c)
+            #cf = zeros(Float64,c.nc,c.bdryc)
+            #cf = localApprox(c.A, 0, w)
+            #println("Approx distance: ", cf)
+            cf = localApprox(c, w)
+            #println(cf)
+            #return cf;
+            #println("IT MUSTNOT COME HERE")
+            #println("Approx-comp distance: ", cf)
+            #checkDistancesComponent(cf, c.A)
+            #cf = exact(sparsemat2Graph(c.A), w )
+            #checkDistancesComponent(cf, c.A)
+        end
+    end
+
     # println("Lets see if updated!!!")
     # println("Components[",ncmps,"]:")
     # for i in 1:ncmps
@@ -457,7 +570,7 @@ function cfcAccelerate(G, w :: IOStream)
     #         end
     #     end
     # end
-
+    return cf
     
 end
 
@@ -467,13 +580,32 @@ w = open(outFName, "w")
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
-n = 8
-m = 20
-Line = Components3Graph(n,m)
+# n = 8
+# m = 20
+# Line = Components3Graph(n,m)
+# Line = TestGraph(15, 40)
+# println(Line)
+# @time cf = localApproxTest(Line,0, w)
+# #println(cf)
+# logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+# @time cfcAccelerate(Line,w)
+Line = subTestGraph(11, 30)
 println(Line)
 @time cf = localApproxTest(Line,0, w)
 logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-@time cfcAccelerate(Line,w)
+@time cf = cfcAccelerate(Line,w)
+#println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
+#cf = calculateCF(cf, Line.n,size(cf,1))
+#logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+
+Line = subTestGraph2(8, 24)
+println(Line)
+cf = localApproxTest(Line,0, w)
+logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+@time cf = cfcAccelerate(Line,w)
+#println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
+#cf = calculateCF(cf, Line.n, size(cf,1))
+#logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 #distances = cfcaccelerate(Line, w)
 #println(distances)
 logw(w, "-------------------------------------------------------- ")

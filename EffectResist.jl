@@ -19,7 +19,7 @@ end
 function approx(G, alldistances, w :: IOStream)
     logw(w,"****** Running approx ******")
     distances = erJLT(G, 1)
-    println("Distances:", distances)
+    #println("Distances:", distances)
     if alldistances == 1
         return distances
     else
@@ -95,22 +95,22 @@ e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 
 
 
-# for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
-#     logw(w, "---------------------",rFile,"-------------------------- ")
-#     logw(w, "Reading graph from edges list file ", rFile)
-#     G = read_file(string(datadir,rFile))
-#     logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
-#     A, L = sparseAdja(G)
-#     if !Laplacians.isConnected(A)
-#         logw(w," WARNING: Graph is not connected. Program will exit!");
-#         exit()
-#     end
-#     @time exact(G,w)
-#     @time exact(G,0,w)
-#     @time approx(G,w)
-#     @time approx(G,0,w)
-# end
-# logw(w, "-------------------------------------------------------- ")
+for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
+    logw(w, "---------------------",rFile,"-------------------------- ")
+    logw(w, "Reading graph from edges list file ", rFile)
+    G = read_file(string(datadir,rFile))
+    logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
+    A, L = sparseAdja(G)
+    if !Laplacians.isConnected(A)
+        logw(w," WARNING: Graph is not connected. Program will exit!");
+        exit()
+    end
+#    @time exact(G,w)
+#    @time exact(G,0,w)
+    @time approx(G,w)
+    @time approx(G,0,w)
+end
+logw(w, "-------------------------------------------------------- ")
 
 # L = LineGraph(7)
 # println(L)

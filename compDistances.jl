@@ -52,3 +52,13 @@ function calculateCF(cf, n)
     
     return cf
 end
+
+function calculateCF(cf, n, sizecf)
+    
+    for i in 1:sizecf
+         cf[i]= n/cf[i]
+        #println(cf[i])
+    end
+    
+    return cf
+end
