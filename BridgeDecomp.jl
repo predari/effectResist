@@ -4,7 +4,6 @@ include("logw.jl")
 include("bridge.jl")
 include("components.jl")
 include("compDistances.jl")
-include("appxInvTrace.jl")
 using Laplacians
 using LightGraphs
 #using LightGraphs.SimpleEdge
@@ -284,63 +283,8 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     end
     return cf
 end
-### todo: remove
-function LinvdiagSS(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
 
-    f = approxCholLap(a,tol=1e-5);
-    
-    n = size(a,1)
-    k = round(Int, JLfac*log(n)) # number of dims for JL
-    
-    U = wtedEdgeVertexMat(a)
-    m = size(U,1)
-    er = zeros(n)
 
-    # v_i
-    for i = 1:k # q 
-        # random gaussian projections Q
-        r = randn(m) 
-        # compute (QW^(1/2)B)
-        ur = U'*r 
-        v = zeros(n)
-        # solve(L, ((QW^(1/2)B)^T))^T
-        # v here is Z_{i,:}
-        v = f(ur[:])
-        #println("vector v=",v)
-        #println("type=",typeof(v),"size=",size(v,1),",",size(v,2))
-        # er(u) = Sigma_{v\in V\u}(Z_{u,v})^2
-        # decause I'll do the above k times
-        # given the k random projections,
-        # I have to divide by k
-        er.+= v.^2/k
-    end
-
-  return er;
-
-end
-
-### todo: remove
-function erJLT(G)
-    n = G.n
-    
-    A, L = sparseAdja(G)
-    er = LinvdiagSS(A;JLfac=20)
-    u = indmin(er)
-    L = delnode2(L,u,n)
-    A = delnode2(A,u,n)
-    cf = (n > 200) ? (n/appxInvTrace(L;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
-  return u, cf;
-
-end
-### todo: remove
-function approx(G, w :: IOStream)
-    logw(w,"****** Running (chinese) approx ******")
-    #start_time = time()
-    u, maxcf = erJLT(G)
-    #elapsed_time = time()-start_time
-    logw(w,"\t node with argmax{c(", u, ")} = ", maxcf)
-    #logw(w,"\t totaltime: ",time() - elapsed_time, " (s)")
-end
 
 
 
@@ -626,7 +570,7 @@ function cfcAccelerate(G, w :: IOStream)
     #         end
     #     end
     # end
-    #return cf
+    return cf
     
 end
 
@@ -635,36 +579,36 @@ outFName=string(ARGS[1],".txt")
 w = open(outFName, "w")
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
-# logw(w, "-------------------------------------------------------- ")
-# # n = 8
-# # m = 20
-# # Line = Components3Graph(n,m)
-# # Line = TestGraph(15, 40)
-# # println(Line)
-# # @time cf = localApproxTest(Line,0, w)
-# # #println(cf)
-# # logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# # @time cfcAccelerate(Line,w)
-# Line = subTestGraph(11, 30)
+logw(w, "-------------------------------------------------------- ")
+# n = 8
+# m = 20
+# Line = Components3Graph(n,m)
+# Line = TestGraph(15, 40)
 # println(Line)
 # @time cf = localApproxTest(Line,0, w)
+# #println(cf)
 # logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# @time cf = cfcAccelerate(Line,w)
-# #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
-# #cf = calculateCF(cf, Line.n,size(cf,1))
-# #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+# @time cfcAccelerate(Line,w)
+Line = subTestGraph(11, 30)
+println(Line)
+@time cf = localApproxTest(Line,0, w)
+logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+@time cf = cfcAccelerate(Line,w)
+#println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
+#cf = calculateCF(cf, Line.n,size(cf,1))
+#logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 
-# Line = subTestGraph2(8, 24)
-# println(Line)
-# cf = localApproxTest(Line,0, w)
-# logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# @time cf = cfcAccelerate(Line,w)
-# #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
-# #cf = calculateCF(cf, Line.n, size(cf,1))
-# #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# #distances = cfcaccelerate(Line, w)
-# #println(distances)
-# logw(w, "-------------------------------------------------------- ")
+Line = subTestGraph2(8, 24)
+println(Line)
+cf = localApproxTest(Line,0, w)
+logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+@time cf = cfcAccelerate(Line,w)
+#println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
+#cf = calculateCF(cf, Line.n, size(cf,1))
+#logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+#distances = cfcaccelerate(Line, w)
+#println(distances)
+logw(w, "-------------------------------------------------------- ")
 
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
@@ -677,9 +621,8 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         logw(w," WARNING: Graph is not connected. Program will exit!");
         exit()
     end
-    #@time cf = localApproxTest(G, 0, w)
-    @time approx(G, w)
-    #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+    @time cf = localApproxTest(G, 0, w)
+    logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
     @time cfcAccelerate(G, w)
 end
 
