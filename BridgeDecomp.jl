@@ -252,12 +252,13 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
             szc = szc + 1
         end
     end
-    #println("Links2core (global numb):",links2core)
     links1core = setdiff(bdry,links2core)
-    #println("Links1core (global numb):",links1core)
     l2c_idx = findin(nodes, links2core)
-    #println("l2c_idx (local numb):", l2c_idx)
     l1c_idx = findin(nodes, links1core)
+    
+    #println("Links2core (global numb):",links2core)
+    #println("Links1core (global numb):",links1core)
+    #println("l2c_idx (local numb):", l2c_idx)
     #println("l1c_idx (local numb):", l1c_idx)
 
     for (idx, u) in enumerate(l2c_idx)
@@ -283,8 +284,6 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     end
     return cf
 end
-
-
 
 
 
@@ -435,19 +434,25 @@ function localApproxTest(G, bridges, w :: IOStream)
     return calculateCF(localApprox(A, 0, w), A.n)
 end
 
+
+
 function cfcAccelerate(G, w :: IOStream)
     A =  sparseAdja2(G)
     n = G.n
-    edges = bridges(LightGraphs.Graph(A))
+    @time edges = bridges(LightGraphs.Graph(A))
+    println("Time of finding bridges!")
     nedges = size(edges,1)
-    #println(100*edges/n, "% edges")
+    
+    println((100*nedges)/(G.m), "% edges are bridges.")
     A, extnodes = removeBridges(A, edges, nedges)
     B = Bridges(edges, extnodes)
     cmps, map, ncmps = allComp(A)
     C = Array{Component,1}(ncmps)
     maxc = 0;
     for i in 1:ncmps
-        bdry = intersect(map[i], extnodes)
+        # Intersect with arrays is slow because in is slow with arrays.
+        # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
+        bdry = intersect(map[i], extnodes) 
         index = findin(B.nodes,bdry)
         B.comp[index] = i 
         C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,size(bdry,1),
@@ -570,7 +575,7 @@ function cfcAccelerate(G, w :: IOStream)
     #         end
     #     end
     # end
-    return cf
+    #return cf
     
 end
 
@@ -591,22 +596,22 @@ logw(w, "-------------------------------------------------------- ")
 # @time cfcAccelerate(Line,w)
 Line = subTestGraph(11, 30)
 println(Line)
-@time cf = localApproxTest(Line,0, w)
-logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-@time cf = cfcAccelerate(Line,w)
+@time cfcAccelerate(Line,w)
 #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
 #cf = calculateCF(cf, Line.n,size(cf,1))
 #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+@time cf = localApproxTest(Line,0, w)
+logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 
 Line = subTestGraph2(8, 24)
 println(Line)
-cf = localApproxTest(Line,0, w)
-logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-@time cf = cfcAccelerate(Line,w)
+@time cfcAccelerate(Line,w)
 #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
 #cf = calculateCF(cf, Line.n, size(cf,1))
 #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 #distances = cfcaccelerate(Line, w)
+cf = localApproxTest(Line,0, w)
+logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 #println(distances)
 logw(w, "-------------------------------------------------------- ")
 
@@ -621,9 +626,9 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         logw(w," WARNING: Graph is not connected. Program will exit!");
         exit()
     end
+    @time cfcAccelerate(G, w)
     @time cf = localApproxTest(G, 0, w)
     logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-    @time cfcAccelerate(G, w)
 end
 
 
