@@ -201,6 +201,12 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             c.external[findin(c.bdry, v)] = c.external[findin(c.bdry, v)] + 1
         end 
     end
+    println("Bridges:")
+    printBridges(B)
+    println("Components: $ncmps")
+    for c in C
+        printComponent(c)
+    end
     println(" creating core1 time : ", time()- t, "(s)")
     ### end of stage one
     t = time()
@@ -245,55 +251,46 @@ w = open(outFName, "w")
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
-# # n = 8
-# # m = 20
-# # Line = Components3Graph(n,m)
-# # Line = TestGraph(15, 40)
-# # println(Line)
-# # @time cf = localApproxTest(Line,0, w)
-# # #println(cf)
-# # logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# # @time cfcAccelerate(Line,w)
-# Line = subTestGraph(11, 30)
+# n = 8
+# m = 20
+# Line = Components3Graph(n,m)
+# Line = TestGraph(15, 40)
 # println(Line)
-# @time cfcAccelerate(Line,w)
-# #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
-# #cf = calculateCF(cf, Line.n,size(cf,1))
-# #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
 # @time cf = localApproxTest(Line,0, w)
+# #println(cf)
 # logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-
-# Line = subTestGraph2(8, 24)
-# println(Line)
 # @time cfcAccelerate(Line,w)
-# #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
-# #cf = calculateCF(cf, Line.n, size(cf,1))
-# #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# #distances = cfcaccelerate(Line, w)
-# cf = localApproxTest(Line,0, w)
-# logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# #println(distances)
-# logw(w, "-------------------------------------------------------- ")
+Line = subTestGraph(11, 30)
+println(Line)
+A, L = sparseAdja(Line)
+cfcAccelerate(A,w)
+approx(A,L,w)
+Line = subTestGraph2(8, 24)
+A, L = sparseAdja(Line)
+cfcAccelerate(A,w)
+#println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
+#cf = calculateCF(cf, Line.n, size(cf,1))
+#logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+#distances = cfcaccelerate(Line, w)
+#println(distances)
+approx(A,L,w)
+logw(w, "-------------------------------------------------------- ")
 
 
-for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
-    logw(w, "---------------------",rFile,"-------------------------- ")
-    logw(w, "Reading graph from edges list file ", rFile)
-    G = read_file(string(datadir,rFile))
-    logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
-    A, L = sparseAdja(G)
-    if !Laplacians.isConnected(A)
-        logw(w," WARNING: Graph is not connected. Program will exit!");
-        exit()
-    end
+# for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
+#     logw(w, "---------------------",rFile,"-------------------------- ")
+#     logw(w, "Reading graph from edges list file ", rFile)
+#     G = read_file(string(datadir,rFile))
+#     logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
+#     A, L = sparseAdja(G)
+#     if !Laplacians.isConnected(A)
+#         logw(w," WARNING: Graph is not connected. Program will exit!");
+#         exit()
+#     end
 
-    cfcAccelerate(A, w)
-   
-    approx(A,L,w)
-
-    #@time cf = localApproxTest(G, 0, w)
-    #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-end
+#     cfcAccelerate(A, w) 
+#     approx(A,L,w)
+# end
 
 
 
