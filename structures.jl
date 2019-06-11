@@ -4,7 +4,7 @@ using LightGraphs
 mutable struct Component
     A:: SparseMatrixCSC{Float64}
     nc::Int64
-    nodemap::Array{Int64,1} # size of nc
+    nodemap::Array{Int64,1} # size of nc Array{Int64,1}
     bdry::Array{Int64,1} # bdry nodes in Cluster
     bdryc::Int64
     distances:: Array{Float64}

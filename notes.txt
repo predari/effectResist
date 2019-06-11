@@ -28,7 +28,7 @@ PG-Privacy (out.arenas-pgp)
 Reactome (out.reactome)
 
 ################
-## data-big (#6)
+## data-big (#6) ##### TODO: make them run fast!!
 ################
 Ego-Twitter
 Com-DBLP
@@ -36,3 +36,13 @@ RoadNet-PA
 Com-Youtube
 RoadNet-TX
 RoadNet-CA
+
+
+################
+## others (#6)
+################
+Facebook friendships
+Facebook wall posts
+Edinburgh Associative Thesaurus
+DBpedia genre
+
