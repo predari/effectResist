@@ -40,23 +40,18 @@ function checkDistancesComponent(cf, A :: SparseMatrixCSC{Float64})
 end
 
 
-
-# TODO: remove
-function delnode2(L, v, t)
-    return L[[1:v-1;v+1:t], [1:v-1;v+1:t]]
-end
-
 function erJLT(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64})
 
     n = A.n
-    start_time = time()        
+    start_approx_time = time()        
+
     er = LinvdiagSS(A;JLfac=20)
     u = indmin(er)
     L = delnode2(L,u,n)
     A = delnode2(A,u,n)
     cf = (n > 2000) ? (n/appxInvTrace(L;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
-    
-    println("TOTAL APPROX TIME IS: ", time() - start_time, "(s)")    
+    end_approx_time = time()
+    println("TOTAL APPROX TIME ISSSS: ", end_approx_time - start_approx_time, "(s)")    
   return u, cf;
 
 end
@@ -119,6 +114,17 @@ function localApprox(c :: Component, w :: IOStream)
     return distances
 end
 
+
+function delnodes(A:: SparseMatrixCSC{Float64}, v::Set{Int64})
+    idx = setdiff(Array(1:A.n),v)
+    return A[idx, idx]
+end
+# TODO: remove
+function delnode2(L:: SparseMatrixCSC{Float64}, v, t)
+    return L[[1:v-1;v+1:t], [1:v-1;v+1:t]]
+end
+
+
 function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
     #nodes =  Array{Int64,1}()
     nodes =  Set{Int64}()
@@ -131,6 +137,20 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
     return dropzeros!(A), nodes
 end
 
+function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges)
+    ### delnodes creates a new array so the numbering
+    ### is reevaluated. I want the numbering to stay the
+    ### same, so I will just write zeros ontop of A whereever is needed.
+    ### A = delnodes(A, B.core1nodes)
+    for e in B.edges
+        A[e.src,e.dst] = 0.0
+        A[e.dst,e.src] = 0.0
+    end
+    for u in B.core1nodes
+        A[u,:] = 0.0
+    end
+    return dropzeros!(A)
+end
 
 function localApproxTest(G, bridges, w :: IOStream)
     A =  sparseAdja2(G)
@@ -150,76 +170,77 @@ end
 function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     start_time = time()
     n = A.n
-    edges = bridges(LightGraphs.Graph(A))
-    nedges = size(edges,1)
-    println((100*nedges)/(A.m), "% edges are bridges.")
+    # edges = bridges(LightGraphs.Graph(A))
+    # nedges = size(edges,1)
+    # println((100*nedges)/(A.m), "% edges are bridges.")
+    # println("finding bridges time: ", time() - start_time, "(s)")
+    # t = time()
+    # A, extnodes = removeBridges(A, edges, nedges)
+    # B = Bridges(edges, extnodes)
+    B = bridges(LightGraphs.Graph(A))
+    nedges = B.m
+    println((100*B.m)/(A.m), "% edges are bridges (type core2).")
+    println(100*length(B.core1nodes)/A.m, "% edges are bridges (type core1).")
     println("finding bridges time: ", time() - start_time, "(s)")
     t = time()
-    A, extnodes = removeBridges(A, edges, nedges)
-    B = Bridges(edges, extnodes)
+    ### todo: deletenodes from A 
+    A  = removeBridges(A, B)
     cmps, map, ncmps = allComp(A)
-    C = Array{Component,1}(ncmps)
+    count = 0
+    for m in map
+        #println(m, length(m))
+        if length(m) != 1
+            count += 1
+        end
+        #println(count)
+    end
+    println("Count is ", count)
+    #C = Array{Component,1}(count)
+    C = Array{Component,1}(ncmps)    
     println("remove bridges time: ", time()- t, "(s)")
     t = time()
     maxc = 0;
+    l = 1;
     for i in 1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        bdry = collect(intersect(Set(map[i]), extnodes)) 
-        index = findin(B.nodes,bdry)
-        B.comp[index] = i 
-        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,length(bdry),
-                         zeros(cmps[i].n,length(bdry)), zeros(length(bdry)))
+        # if length(map[i]) == 1
+        #    continue;
+        # end
+        bdry = collect(intersect(Set(map[i]), B.core2nodes))
+        link = collect(intersect(Set(map[i]), B.core3nodes))
+        #link = collect(intersect(Set(map[i]), Set(edges))) 
+        index = findin(B.core2nodes,bdry)
+        B.comp[findin(B.core3nodes,link)] = i#l 
+        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
+                         zeros(cmps[i].n,length(link)), B.ext[index])
         if cmps[i].n >= maxc
-            maxc = i
+            maxc = i#l
         end
+        l += 1
     end
-    println("creating components time: ", time()- t, "(s)")
-    # if B.m + 1 != ncmps
-    #     println("Error!")
-    #     exit(0)
+
+    # println("Bridges:")
+    # printBridges(B)
+    # println("Components: $ncmps")
+    # for (idx, c) in enumerate(C)
+    #      print("$idx")
+    #      printComponent(c)
     # end
-    #### stage one now
-    #### for all bridges that connect one-core components with other components
-    t = time()
-    for (idxu, u) in enumerate(B.nodes)
-        v = u
-        i = B.comp[idxu]
-        if C[i].nc == 1
-            for e in B.edges
-                if e.src == u
-                    v = e.dst
-                    break;
-                elseif e.dst == u
-                    v = e.src
-                    break;
-                end
-                #todo:remove e with pop!
-            end
-            tmp = C[B.comp[findin(B.nodes,v)]]
-            c=tmp[1]
-            c.external[findin(c.bdry, v)] = c.external[findin(c.bdry, v)] + 1
-        end 
-    end
-    println("Bridges:")
-    printBridges(B)
-    println("Components: $ncmps")
-    for c in C
-        printComponent(c)
-    end
-    println(" creating core1 time : ", time()- t, "(s)")
-    ### end of stage one
+    println("creating components time: ", time()- t, "(s)")
+
     t = time()
     for (idx, c) in enumerate(C)
         if c.nc != 1
             #cf = localApprox(c.A, 0, w)
             print("Approxing component $idx ...")
-            cf = localApprox(c, w)
+            localApprox(c, w)
             println(" done")
             #cf = exact(sparsemat2Graph(c.A), w )
         end
     end
     println(" solving core1 time : ", time()- t, "(s)")
+
     # for (idx, c) in enumerate(C)
     #     if c.nc == 1
     #         println("$idx")
@@ -251,46 +272,51 @@ w = open(outFName, "w")
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
-# n = 8
-# m = 20
-# Line = Components3Graph(n,m)
-# Line = TestGraph(15, 40)
-# println(Line)
-# @time cf = localApproxTest(Line,0, w)
-# #println(cf)
-# logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# @time cfcAccelerate(Line,w)
-Line = subTestGraph(11, 30)
+#n = 8
+#m = 20
+#Line = Components3Graph(n,m)
+
+Line = TestGraph(15, 40)
 println(Line)
 A, L = sparseAdja(Line)
-cfcAccelerate(A,w)
-approx(A,L,w)
-Line = subTestGraph2(8, 24)
+@time approx(A,L,w)
+Line = TestGraph(15, 40)
+println(Line)
 A, L = sparseAdja(Line)
-cfcAccelerate(A,w)
-#println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
-#cf = calculateCF(cf, Line.n, size(cf,1))
-#logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-#distances = cfcaccelerate(Line, w)
-#println(distances)
-approx(A,L,w)
-logw(w, "-------------------------------------------------------- ")
+@time cfcAccelerate(A,w)
+
+# Line = subTestGraph(11, 30)
+# println(Line)
+# A, L = sparseAdja(Line)
+# cfcAccelerate(A,w)
+# approx(A,L,w)
+# Line = subTestGraph2(8, 24)
+# println(Line)
+# A, L = sparseAdja(Line)
+# cfcAccelerate(A,w)
+# #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
+# #cf = calculateCF(cf, Line.n, size(cf,1))
+# #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
+# #distances = cfcaccelerate(Line, w)
+# #println(distances)
+# approx(A,L,w)
+# logw(w, "-------------------------------------------------------- ")
 
 
-# for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
-#     logw(w, "---------------------",rFile,"-------------------------- ")
-#     logw(w, "Reading graph from edges list file ", rFile)
-#     G = read_file(string(datadir,rFile))
-#     logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
-#     A, L = sparseAdja(G)
-#     if !Laplacians.isConnected(A)
-#         logw(w," WARNING: Graph is not connected. Program will exit!");
-#         exit()
-#     end
-
-#     cfcAccelerate(A, w) 
-#     approx(A,L,w)
-# end
+for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
+    logw(w, "---------------------",rFile,"-------------------------- ")
+    logw(w, "Reading graph from edges list file ", rFile)
+    G = read_file(string(datadir,rFile))
+    logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
+    A, L = sparseAdja(G)
+    if !Laplacians.isConnected(A)
+        logw(w," WARNING: Graph is not connected. Program will exit!");
+        exit()
+    end
+    @time cfcAccelerate(A, w)
+    A, L = sparseAdja(G)
+    @time approx(A,L,w)
+end
 
 
 

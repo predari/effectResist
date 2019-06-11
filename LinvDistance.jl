@@ -97,16 +97,17 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     nodes = c.nodemap
     bdry = c.bdry
     external = c.external
-    #println(nodes)
-    #println(bdry)
-    #println(external)
-    sz = count(x->x==0,external)
-    if 0 in bdry
-        println("Error: node index cannot be zero!");
-        exit(0)
-    end
-    
+    link = c.link
+    println(nodes)
+    println(bdry)
+    println(external)
+    println(link)
+    #sz = count(x->x==0,external)
+    sz = c.linkc
+    println(sz)
+    println("before approxChol")   
     f = approxCholLap(a,tol=1e-5);
+    println("after approxChol")
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(a)
     m = size(U,1)
@@ -129,23 +130,26 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     sumer = sum(er)    
     sumer2 = sum(er2)
 
-    # BAD JULIA
-    links2core = zeros(Int64,sz)
-    szc = 1
-    #links2core = Array{Int64,1}(sz)
-    for (idx, u) in enumerate(bdry)
-        if external[idx] == 0
-            #push!(links2core,u)
-            links2core[szc] = u
-            szc = szc + 1
-        end
-    end
-    links1core = setdiff(bdry,links2core)
-    l2c_idx = findin(nodes, links2core)
-    l1c_idx = findin(nodes, links1core)
+    # # BAD JULIA
+    # links2core = zeros(Int64,sz)
+    # szc = 1
+    # #links2core = Array{Int64,1}(sz)
+    # for (idx, u) in enumerate(bdry)
+    #     if external[idx] == 0
+    #         #push!(links2core,u)
+    #         links2core[szc] = u
+    #         szc = szc + 1
+    #     end
+    # end
+    # links1core = setdiff(bdry,links2core)
+    # l2c_idx = findin(nodes, links2core)
+    # l1c_idx = findin(nodes, links1core)
+
     
     #println("Links2core (global numb):",links2core)
     #println("Links1core (global numb):",links1core)
+    l2c_idx = findin(nodes, link)
+    l1c_idx = findin(nodes, bdry)
     #println("l2c_idx (local numb):", l2c_idx)
     #println("l1c_idx (local numb):", l1c_idx)
 
@@ -158,7 +162,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
         sumer2 += - er2[u]
     end
 
-    multiplier = external[findin(bdry,getindex(nodes,l1c_idx))]
+    #multiplier = external[findin(bdry,getindex(nodes,l1c_idx))]
     #println("l1c_idx (local numb):", l1c_idx)
     #println("multiplier :", multiplier)
 
@@ -169,7 +173,8 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
         ### To avoid do for v in setdiff(l1c_idx,u), but then
         ### the idx should be recomputed with findin etc.
         for (idx, v) in enumerate(l1c_idx) 
-            cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * multiplier[idx] + multiplier[idx]
+            #cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * multiplier[idx] + multiplier[idx]
+            cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * external[idx] + external[idx]
         end
     end
     return cf
