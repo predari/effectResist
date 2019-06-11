@@ -94,20 +94,24 @@ end
 function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     a = c.A
     n = c.nc
+    if n == 2
+        println(a)
+    end
+
+    f = approxCholLap(a,tol=1e-5);
+
+    
     nodes = c.nodemap
     bdry = c.bdry
     external = c.external
     link = c.link
-    println(nodes)
-    println(bdry)
-    println(external)
-    println(link)
+    # println(nodes)
+    # println(bdry)
+    # println(external)
+    # println(link)
     #sz = count(x->x==0,external)
     sz = c.linkc
-    println(sz)
-    println("before approxChol")   
-    f = approxCholLap(a,tol=1e-5);
-    println("after approxChol")
+    #println(sz)
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(a)
     m = size(U,1)

@@ -71,7 +71,7 @@ function erINV(G, alldistances)
     L2 = delnode2(L,u,n)
     Linv = inv(L2)
     distances = calculateCommuteDists(Linv, n, u)
-    println(distances)
+    #println(distances)
     return distances
 end
 
@@ -80,7 +80,7 @@ function exact(G, w :: IOStream)
     logw(w,"****** Running (my) exact ******")
     distances = erINV(G,1)
     cf = calculateNodeDists(distances, G.n)
-    println("Exact distance:",cf)
+    #println("Exact distance:",cf)
     cf = calculateCF(cf, G.n)
     logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
          maximum(cf))
@@ -120,7 +120,7 @@ function delnodes(A:: SparseMatrixCSC{Float64}, v::Set{Int64})
     return A[idx, idx]
 end
 # TODO: remove
-function delnode2(L:: SparseMatrixCSC{Float64}, v, t)
+function delnode2(L, v, t)
     return L[[1:v-1;v+1:t], [1:v-1;v+1:t]]
 end
 
@@ -142,12 +142,31 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     ### is reevaluated. I want the numbering to stay the
     ### same, so I will just write zeros ontop of A whereever is needed.
     ### A = delnodes(A, B.core1nodes)
+    #println(full(A))
+    #m, n = size(A)
+    #rows = rowvals(A)
+    # println(B.core1nodes)
+    # for u in B.core1nodes
+    #     println(A[u,:])
+    #     println(A[:,u])
+    # end
+
+    # for i in B.core1nodes
+    #     for j in nzrange(A, i)
+    #         row = rows[j]
+    #         A[row] = 0.0
+    #         #println(row, ",", val)
+    #     end
+    # end
+
     for e in B.edges
         A[e.src,e.dst] = 0.0
         A[e.dst,e.src] = 0.0
     end
+    ### TODO: the following is very slow obviously at all!!!
     for u in B.core1nodes
         A[u,:] = 0.0
+        A[:,u] = 0.0
     end
     return dropzeros!(A)
 end
@@ -182,9 +201,14 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     println((100*B.m)/(A.m), "% edges are bridges (type core2).")
     println(100*length(B.core1nodes)/A.m, "% edges are bridges (type core1).")
     println("finding bridges time: ", time() - start_time, "(s)")
+    #println("Bridges:")
+    #printBridges(B)
+
     t = time()
-    ### todo: deletenodes from A 
     A  = removeBridges(A, B)
+    println("remove bridges time: ", time()- t, "(s)")
+    t = time()
+    
     cmps, map, ncmps = allComp(A)
     count = 0
     for m in map
@@ -194,28 +218,29 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         end
         #println(count)
     end
-    println("Count is ", count)
-    #C = Array{Component,1}(count)
-    C = Array{Component,1}(ncmps)    
-    println("remove bridges time: ", time()- t, "(s)")
-    t = time()
+    #ccount = ncmps - length(B.core1nodes)
+    #println(ccount,",", count)
+    C = Array{Component,1}(count)
+    #C = Array{Component,1}(ncmps)    
+    
+
     maxc = 0;
     l = 1;
     for i in 1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        # if length(map[i]) == 1
-        #    continue;
-        # end
+        if length(map[i]) == 1
+            continue;
+        end
         bdry = collect(intersect(Set(map[i]), B.core2nodes))
         link = collect(intersect(Set(map[i]), B.core3nodes))
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
-        B.comp[findin(B.core3nodes,link)] = i#l 
-        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
+        B.comp[findin(B.core3nodes,link)] = l 
+        C[l] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
         if cmps[i].n >= maxc
-            maxc = i#l
+            maxc = l#l
         end
         l += 1
     end
@@ -234,13 +259,17 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         if c.nc != 1
             #cf = localApprox(c.A, 0, w)
             print("Approxing component $idx ...")
-            localApprox(c, w)
+            c.distances = localApprox(c, w)
             println(" done")
             #cf = exact(sparsemat2Graph(c.A), w )
         end
     end
     println(" solving core1 time : ", time()- t, "(s)")
-
+    if count == 1
+        c = C[1] 
+        cf = calculateCF(c.distances, n, c.nc)
+        logw(w,"\t node with argmax{c(", findin(c.nodemap,[indmax(cf)])[1], ")} = ", maximum(cf))
+    end
     # for (idx, c) in enumerate(C)
     #     if c.nc == 1
     #         println("$idx")
@@ -316,6 +345,7 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     @time cfcAccelerate(A, w)
     A, L = sparseAdja(G)
     @time approx(A,L,w)
+    #@time exact(G,w)
 end
 
 

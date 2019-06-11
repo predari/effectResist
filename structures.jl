@@ -59,9 +59,11 @@ Bridges(edges, core1nodes:: Set{Int64}, core2nodes:: Set{Int64},  core3nodes:: S
 
 
 function printComponent(C:: Component)
-    #println("- A type:",eltype(C.A))
-    #println(C.A)
+    println("- A type:",eltype(C.A))
     println("- A.n=",C.nc)
+    if C.nc == 2 || C.nc == 3
+        println(C.A)
+    end
     println("- list of nodes=",C.nodemap)
     println("- list of bdry=",C.bdry)
     println("- list of link=",C.link)

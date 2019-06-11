@@ -133,15 +133,20 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                         push!(core1nodes, v)
                         push!(core1neighbor, w)
                         push!(core2nodes, w)
+                        #edge = Edge(v,w)
+                        #push!(bridges, edge)
                     elseif length(outneighbors(g, w)) == 1
                         push!(core1nodes, w)
                         push!(core1neighbor, v)
                         push!(core2nodes, v)
+                        #edge = Edge(v,w)
+                        #push!(bridges, edge)
                     elseif v < w
                         edge = Edge(v, w);
                         push!(core3nodes,v);
                         push!(core3nodes,w);
                         push!(bridges, edge)
+                        
                     else
                         edge = Edge(w, v)
                         push!(core3nodes,w);
@@ -179,6 +184,19 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         c = count(x->x==u,core1neighbor);
         core2count[idx] = c;
     end
+    # println("core1nodes", core1nodes)
+    # println("core2nodes", core2nodes)
+    # println("core2count", core2count)
+    # println("core3nodes", core3nodes)
+    if length(findin(core1nodes,core2nodes)) != 0
+        println("WARNING!! Problem with core2 calculation")
+        exit(1)
+    end
+    if length(findin(core1nodes,core3nodes)) != 0
+        println("WARNING!! Problem with core3 calculation")
+        exit(1)
+    end
+
     B = Bridges(bridges, core1nodes, core2nodes, core3nodes, core2count)
 #    B = Bridges(bridges, core1nodes, core2nodes, core2count)
     
