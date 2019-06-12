@@ -145,6 +145,7 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
     #println(full(A))
     j = Int64
     rows = rowvals(A)
+    ## or   colptr = mat.colptr , rowval = mat.rowval
     #vals = nonzeros(A)
     for u in core1nodes
         j = nzrange(A, u)[1]
@@ -189,17 +190,21 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
 end
 
 function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
+    start_time = time()
     cmps, map, ncmps = allComp(A)
+    println("finding components time: ", time() - start_time, "(s)")
+    t = time()
     count = 0
     for m in map
         if length(m) != 1
             count += 1
         end
     end
+    ### TODO: implement the following with push!
     C = Array{Component,1}(count)
-    
     maxc = 0;
     l = 1;
+    #### Is : for i = eachindex(a) faster than for i = 1:n?
     for i in 1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
@@ -218,6 +223,7 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
         end
         l += 1
     end
+    println("building structure components time: ", time() - t, "(s)")
     return C
 end
 
@@ -323,8 +329,8 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-    #A, L = sparseAdja(G)
-    #@time approx(A,L,w)
+    A, L = sparseAdja(G)
+    @time approx(A,L,w)
     #@time exact(G,w)
 end
 

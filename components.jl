@@ -1,50 +1,87 @@
 using Laplacians
-# using DataStructures
 
-# #========================================================================
-#      DATA STRUCTURES
-# =#
+# function components(mat::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
+#   n = mat.n
+
+#   order = Array{Ti}(undef, n)
+#   comp = zeros(Ti,n)
+
+#   # note that all of this casting is unnecessary.
+#   # but, some of it speeds up the code
+#   # I have not figured out the minimal necessary
+#   c::Ti = 0
+
+#   colptr = mat.colptr
+#   rowval = mat.rowval
+
+#   @inbounds for x in 1:n
+#     if (comp[x] == 0)
+#       c = c + 1
+#       comp[x] = c
+
+#       if colptr[x+1] > colptr[x]
+#         ptr::Ti = 1
+#         orderLen::Ti = 2
+#         order[ptr] = x
+
+#         while ptr < orderLen
+#           curNode = order[ptr]
+
+#           for ind in colptr[curNode]:(colptr[curNode+1]-1)
+#             nbr = rowval[ind]
+#             if comp[nbr] == 0
+#               comp[nbr] = c
+#               order[orderLen] = nbr
+#               orderLen += 1
+#             end # if
+#           end # for
+#           ptr += 1
+#         end # while
+#       end # if
+#     end
+
+#   end
+
+#   return comp
+# end # function
 
 
-# mutable struct fastQueue
-#     q::Vector{Int64}
-#     n::Int64
-#     curPtr::Int64
-#     endPtr::Int64
-# end
+function Comps(compvec::Vector{Ti}) where Ti
+    nc = maximum(compvec)
+    println("inside")
+    sizes = zeros(Ti,nc)
+    for i in compvec
+        sizes[i] += 1
+    end
+    println(compvec)
+    println(sizes)
+    idx = findin(sizes,1)
+    # do not create components for comps of size 1
+    #deleteat!(compvec,idx)
+    for i in idx
+        deleteat!(compvec,findfirst(compvec,i))
+    end
+    #filter!(x->x \nin 10,a)
+    deleteat!(sizes,idx)
+    println(compvec)
+    println(sizes)
 
-# fastQueue(n::Int) = fastQueue(zeros(Int64,n), n, 1, 0)
+    nc = length(sizes)
+    w = maximum(compvec)
+    comps = Vector{Vector{Ti}}(w)
+     for i in 1:w
+         comps[i] = zeros(Ti,sizes[i])
+     end
 
-# hasMore(fq::fastQueue) = fq.curPtr <= fq.endPtr
+    ptrs = zeros(Ti,w)
+     for i in 1:length(compvec)
+        c = compvec[i]
+        ptrs[c] += 1
+        comps[c][ptrs[c]] = i
+    end
+    return comps
+end # vecToComps
 
-# import Base.push!
-
-# function push!(fq::fastQueue, i)
-#     @assert fq.endPtr < fq.n
-    
-#     fq.endPtr = fq.endPtr + 1
-#     fq.q[fq.endPtr] = i
-       
-# end
-
-# function pull!(fq::fastQueue)
-#     @assert hasMore(fq)
-    
-#     i = fq.q[fq.curPtr]
-#     fq.curPtr += 1
-    
-#     return i
-# end
-
-# function reset!(fq::fastQueue)
-#     fq.curPtr = 1
-#     fq.endPtr = 0
-# end
-
-# mutable struct Components
-#     c::Vector{SparseMatrixCSC}
-#     n::Int64
-# end
 
 # Components(n::Int) = Components(zeros(SparseMatrixCSC{Tv,Ti},n), n)
 
@@ -52,8 +89,10 @@ using Laplacians
 #"""Returns also the mapping of nodes between subgraphs and original graph"""
 function allComp(mat:: SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
     cv = components(mat)
+    println(cv)
     nc = maximum(cv)
     nodes = vecToComps(cv)
+    println(nodes)
     comps = Vector{SparseMatrixCSC{Tv,Ti}}(nc) # (undef nc)
     i = 1
     for c in nodes

@@ -92,30 +92,19 @@ end
 
 
 function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
-    a = c.A
-    n = c.nc
-    if n == 2
-        println(a)
-    end
+    start_time = time()
+    f = approxCholLap(c.A,tol=1e-5);
 
-    f = approxCholLap(a,tol=1e-5);
-
-    
     nodes = c.nodemap
     bdry = c.bdry
     external = c.external
     link = c.link
-    # println(nodes)
-    # println(bdry)
-    # println(external)
-    # println(link)
-    #sz = count(x->x==0,external)
     sz = c.linkc
-    #println(sz)
-    k = round(Int, JLfac*log(n)) # number of dims for JL    
-    U = wtedEdgeVertexMat(a)
-    m = size(U,1)
 
+    n = c.nc
+    k = round(Int, JLfac*log(n)) # number of dims for JL    
+    U = wtedEdgeVertexMat(c.A)
+    m = size(U,1)
     er = zeros(n)
     er2 = zeros(n)
     ## first position for Sigma(d(u,v: where v not in bdry)). For d(u,bdry)
@@ -130,34 +119,18 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
         er.+= v./k
         er2.+= v.^2/k
     end
+    println("solving approxCholLap time:", time() - start_time, "(s)")
     
+    t = time()
     sumer = sum(er)    
     sumer2 = sum(er2)
 
-    # # BAD JULIA
-    # links2core = zeros(Int64,sz)
-    # szc = 1
-    # #links2core = Array{Int64,1}(sz)
-    # for (idx, u) in enumerate(bdry)
-    #     if external[idx] == 0
-    #         #push!(links2core,u)
-    #         links2core[szc] = u
-    #         szc = szc + 1
-    #     end
-    # end
-    # links1core = setdiff(bdry,links2core)
-    # l2c_idx = findin(nodes, links2core)
-    # l1c_idx = findin(nodes, links1core)
-
-    
-    #println("Links2core (global numb):",links2core)
-    #println("Links1core (global numb):",links1core)
-    l2c_idx = findin(nodes, link)
-    l1c_idx = findin(nodes, bdry)
+    l3c_idx = findin(nodes, link)
+    l2c_idx = findin(nodes, bdry)
     #println("l2c_idx (local numb):", l2c_idx)
     #println("l1c_idx (local numb):", l1c_idx)
 
-    for (idx, u) in enumerate(l2c_idx)
+    for (idx, u) in enumerate(l3c_idx)
         cf[:,idx + 1] .= er2 + er2[u] .- 2er*er[u]
         # for i in 1:n
         #     cf[i, idx + 1] = er2[i] + er2[u] -2er[i]*er[u]
@@ -171,16 +144,23 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     #println("multiplier :", multiplier)
 
     cf[:,1] .= (n-sz)*er2 + sumer2 .-2er*sumer
-    for u in 1:n
-        #cf[u,1] =  sumer2 + (n-sz)*er2[u] -2er[u]*sumer
-        ### I do the following for one extra time for u == v.
-        ### To avoid do for v in setdiff(l1c_idx,u), but then
-        ### the idx should be recomputed with findin etc.
-        for (idx, v) in enumerate(l1c_idx) 
-            #cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * multiplier[idx] + multiplier[idx]
-            cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * external[idx] + external[idx]
-        end
+    # for u in 1:n
+    #     #cf[u,1] =  sumer2 + (n-sz)*er2[u] -2er[u]*sumer
+    #     ### I do the following for one extra time for u == v.
+    #     ### To avoid do for v in setdiff(l1c_idx,u), but then
+    #     ### the idx should be recomputed with findin etc.
+    #     for (idx, v) in enumerate(l2c_idx) 
+    #         #cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * multiplier[idx] + multiplier[idx]
+    #         cf[u,1] = cf[u,1] + (er2[u] + er2[v] -2er[u]*er[v]) * external[idx] + external[idx]
+    #     end
+    # end
+    #### Here, I calculate this value ss:(er2 + er2[v] .-2er*er[v]) for each v again!!
+    #### I do that a first time in L144. I can avoid it by doing for those v:
+    #### ss*(external[idx]+1) + external[idx] in L144
+    for (idx, v) in enumerate(l2c_idx)             
+        cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * external[idx] + external[idx]
     end
+    println("updating distances time:", time() - t, "(s)")
     return cf
 end
 

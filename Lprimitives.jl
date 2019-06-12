@@ -98,8 +98,8 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
     
     U = wtedEdgeVertexMat(a)
     m = size(U,1)
+    er2 = zeros(n)
     er = zeros(n)
-    dr = zeros(n)
     cf = zeros(n)
     
     # distances = Array{Array{Float64, 1}}(n-1)
@@ -124,17 +124,18 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
         # decause I'll do the above k times
         # given the k random projections,
         # I have to divide by k
-        dr.+= v./k
-        er.+= v.^2/k
+        er.+= v./k
+        er2.+= v.^2/k
     end
     # for i in 1:n-1
     #     for j in 1:n-i
     #         #println(i,",",j,",",j+i)
-    #         distances[i][j] = er[i] + er[j+i] - 2*dr[i]*dr[j+1]
+    #         distances[i][j] = er2[i] + er2[j+i] - 2*er[i]*er[j+1]
     #     end
     # end
+    #cf[:] = sum(er2) .+ (n-1)*er2 .-2er*(sum(er))
     for i in 1:n
-        cf[i] = sum(er) + (n-1)*er[i] -2dr[i]*(sum(dr))
+        cf[i] = sum(er2) + (n-1)*er2[i] -2er[i]*(sum(er))
     end
 
     #return distances;

@@ -141,11 +141,12 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                         push!(core2nodes, v)
                         #edge = Edge(v,w)
                         #push!(bridges, edge)
-                    elseif v < w
-                        edge = Edge(v, w);
-                        push!(core3nodes,v);
-                        push!(core3nodes,w);
-                        push!(bridges, edge)
+                    ### I do not care if edges are ordered    
+                    # elseif v < w
+                    #     edge = Edge(v, w);
+                    #     push!(core3nodes,v);
+                    #     push!(core3nodes,w);
+                    #     push!(bridges, edge)
                         
                     else
                         edge = Edge(w, v)
