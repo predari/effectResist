@@ -1,0 +1,36 @@
+-------------------------------------------------------- 
+****** Running (chinese) approx ******
+	 node with argmax{c(1)} = 0.7898035938152945
+---------------------out.arenas-pgp-------------------------- 
+Reading graph from edges list file out.arenas-pgp
+	 G.n: 10680	 G.m: 24316
+****** Running (chinese) approx ******
+	 node with argmax{c(183)} = 0.6886499331866945
+---------------------out.dbpedia-genre-------------------------- 
+Reading graph from edges list file out.dbpedia-genre
+	 G.n: 258770	 G.m: 463488
+	 node with argmax{c(7924)} = 1.1717711819500534
+****** Running (chinese) approx ******
+	 node with argmax{c(29164)} = 1.3334706678529553
+---------------------out.douban-------------------------- 
+Reading graph from edges list file out.douban
+	 G.n: 154908	 G.m: 327162
+	 node with argmax{c(61)} = 1.199066985236953
+****** Running (chinese) approx ******
+	 node with argmax{c(845)} = 1.2064595356387884
+---------------------out.ego-twitter-------------------------- 
+Reading graph from edges list file out.ego-twitter
+	 G.n: 81306	 G.m: 1342296
+	 node with argmax{c(594)} = 5.471440699047457
+****** Running (chinese) approx ******
+	 node with argmax{c(2192)} = 5.470708648746161
+---------------------out.reactome-------------------------- 
+Reading graph from edges list file out.reactome
+	 G.n: 5973	 G.m: 145778
+****** Running (chinese) approx ******
+	 node with argmax{c(178)} = 3.5794822785417546
+---------------------out.z-caida20071105-------------------------- 
+Reading graph from edges list file out.z-caida20071105
+	 G.n: 26475	 G.m: 53381
+****** Running (chinese) approx ******
+	 node with argmax{c(164)} = 1.3843922851762942

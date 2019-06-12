@@ -194,34 +194,23 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     cmps, map, ncmps = allComp(A)
     println("finding components time: ", time() - start_time, "(s)")
     t = time()
-    count = 0
-    for m in map
-        if length(m) != 1
-            count += 1
-        end
-    end
-    ### TODO: implement the following with push!
-    C = Array{Component,1}(count)
+    C = Array{Component,1}(ncmps)
     maxc = 0;
     l = 1;
     #### Is : for i = eachindex(a) faster than for i = 1:n?
     for i in 1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        if length(map[i]) == 1
-            continue;
-        end
         bdry = collect(intersect(Set(map[i]), B.core2nodes))
         link = collect(intersect(Set(map[i]), B.core3nodes))
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
-        B.comp[findin(B.core3nodes,link)] = l 
-        C[l] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
+        B.comp[findin(B.core3nodes,link)] = i 
+        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
         if cmps[i].n >= maxc
-            maxc = l
+            maxc = i
         end
-        l += 1
     end
     println("building structure components time: ", time() - t, "(s)")
     return C
@@ -331,7 +320,7 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     @time cfcAccelerate(A, w)
     A, L = sparseAdja(G)
     @time approx(A,L,w)
-    #@time exact(G,w)
+    @time exact(G,w)
 end
 
 

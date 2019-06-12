@@ -48,37 +48,34 @@ using Laplacians
 
 function Comps(compvec::Vector{Ti}) where Ti
     nc = maximum(compvec)
-    println("inside")
     sizes = zeros(Ti,nc)
     for i in compvec
         sizes[i] += 1
     end
-    println(compvec)
-    println(sizes)
     idx = findin(sizes,1)
     # do not create components for comps of size 1
     #deleteat!(compvec,idx)
-    for i in idx
-        deleteat!(compvec,findfirst(compvec,i))
-    end
-    #filter!(x->x \nin 10,a)
-    deleteat!(sizes,idx)
-    println(compvec)
-    println(sizes)
+    # for i in idx
+    #     deleteat!(compvec,findfirst(compvec,i))
+    # end
+    # #filter!(x->x \nin 10,a)
+    # deleteat!(sizes,idx)
 
-    nc = length(sizes)
-    w = maximum(compvec)
-    comps = Vector{Vector{Ti}}(w)
-     for i in 1:w
+    comps = Vector{Vector{Ti}}(nc)
+     for i in 1:nc
          comps[i] = zeros(Ti,sizes[i])
      end
 
-    ptrs = zeros(Ti,w)
+    ptrs = zeros(Ti,nc)
      for i in 1:length(compvec)
         c = compvec[i]
         ptrs[c] += 1
         comps[c][ptrs[c]] = i
-    end
+     end
+    ### TODO: do that before constructing comps Vector!!
+    deleteat!(comps,idx)
+    #println(comps)
+
     return comps
 end # vecToComps
 
@@ -89,18 +86,14 @@ end # vecToComps
 #"""Returns also the mapping of nodes between subgraphs and original graph"""
 function allComp(mat:: SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
     cv = components(mat)
-    println(cv)
-    nc = maximum(cv)
-    nodes = vecToComps(cv)
-    println(nodes)
+    #nc = maximum(cv)
+    nodes = Comps(cv)
+    nc = length(nodes)
     comps = Vector{SparseMatrixCSC{Tv,Ti}}(nc) # (undef nc)
     i = 1
     for c in nodes
         comps[i] = mat[c,c]
         i = i + 1
-    end
-    if i == nc
-        printf("Good!")
     end
     return comps, nodes, nc
 end
