@@ -125,7 +125,7 @@ function delnode2(L, v, t)
 end
 
 
-function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
+function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs :: Integer)
     #nodes =  Array{Int64,1}()
     nodes =  Set{Int64}()
     for e in brs
@@ -137,36 +137,23 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs)
     return dropzeros!(A), nodes
 end
 
-function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges)
+function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Set{Int64})
     ### delnodes creates a new array so the numbering
     ### is reevaluated. I want the numbering to stay the
     ### same, so I will just write zeros ontop of A whereever is needed.
     ### A = delnodes(A, B.core1nodes)
     #println(full(A))
-    #m, n = size(A)
-    #rows = rowvals(A)
-    # println(B.core1nodes)
-    # for u in B.core1nodes
-    #     println(A[u,:])
-    #     println(A[:,u])
-    # end
-
-    # for i in B.core1nodes
-    #     for j in nzrange(A, i)
-    #         row = rows[j]
-    #         A[row] = 0.0
-    #         #println(row, ",", val)
-    #     end
-    # end
-
+    j = Int64
+    rows = rowvals(A)
+    #vals = nonzeros(A)
+    for u in core1nodes
+        j = nzrange(A, u)[1]
+        A[u,rows[j]] = 0.0
+        A[rows[j],u] = 0.0
+    end
     for e in B.edges
         A[e.src,e.dst] = 0.0
         A[e.dst,e.src] = 0.0
-    end
-    ### TODO: the following is very slow obviously at all!!!
-    for u in B.core1nodes
-        A[u,:] = 0.0
-        A[:,u] = 0.0
     end
     return dropzeros!(A)
 end
@@ -186,44 +173,31 @@ function locateBridges(A :: SparseMatrixCSC{Float64})
     return A,B
 end
 
-function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
+function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
-    n = A.n
-    # edges = bridges(LightGraphs.Graph(A))
-    # nedges = size(edges,1)
-    # println((100*nedges)/(A.m), "% edges are bridges.")
-    # println("finding bridges time: ", time() - start_time, "(s)")
-    # t = time()
-    # A, extnodes = removeBridges(A, edges, nedges)
-    # B = Bridges(edges, extnodes)
-    B = bridges(LightGraphs.Graph(A))
-    nedges = B.m
-    println((100*B.m)/(A.m), "% edges are bridges (type core2).")
-    println(100*length(B.core1nodes)/A.m, "% edges are bridges (type core1).")
+    B, core1nodes = bridges(LightGraphs.Graph(A))
+    println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
+    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
     println("finding bridges time: ", time() - start_time, "(s)")
     #println("Bridges:")
     #printBridges(B)
-
+    #println("- list of core1nodes=", core1nodes)
     t = time()
-    A  = removeBridges(A, B)
+    A  = removeBridges(A, B, core1nodes)
     println("remove bridges time: ", time()- t, "(s)")
-    t = time()
-    
+    return A,B
+end
+
+function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     cmps, map, ncmps = allComp(A)
     count = 0
     for m in map
-        #println(m, length(m))
         if length(m) != 1
             count += 1
         end
-        #println(count)
     end
-    #ccount = ncmps - length(B.core1nodes)
-    #println(ccount,",", count)
     C = Array{Component,1}(count)
-    #C = Array{Component,1}(ncmps)    
     
-
     maxc = 0;
     l = 1;
     for i in 1:ncmps
@@ -240,24 +214,36 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         C[l] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
         if cmps[i].n >= maxc
-            maxc = l#l
+            maxc = l
         end
         l += 1
     end
+    return C
+end
 
+
+
+function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
+    start_time = time()
+    n = A.n
+    B = Bridges 
+    A, B = extractBridges(A)    
+    t = time()
+    C = Array{Component,1}
+    C = buildComponents(A, B)
+    count = length(C)
     # println("Bridges:")
     # printBridges(B)
-    # println("Components: $ncmps")
+    # println("Components: $count")
     # for (idx, c) in enumerate(C)
-    #      print("$idx")
-    #      printComponent(c)
+    #     print("$idx")
+    #     printComponent(c)
     # end
     println("creating components time: ", time()- t, "(s)")
 
     t = time()
     for (idx, c) in enumerate(C)
         if c.nc != 1
-            #cf = localApprox(c.A, 0, w)
             print("Approxing component $idx ...")
             c.distances = localApprox(c, w)
             println(" done")
@@ -270,12 +256,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         cf = calculateCF(c.distances, n, c.nc)
         logw(w,"\t node with argmax{c(", findin(c.nodemap,[indmax(cf)])[1], ")} = ", maximum(cf))
     end
-    # for (idx, c) in enumerate(C)
-    #     if c.nc == 1
-    #         println("$idx")
-    #         deleteat!(C,idx)
-    #     end
-    # end
     
     # ncomps = 1
     # for c in comps
@@ -343,8 +323,8 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-    A, L = sparseAdja(G)
-    @time approx(A,L,w)
+    #A, L = sparseAdja(G)
+    #@time approx(A,L,w)
     #@time exact(G,w)
 end
 

@@ -21,7 +21,7 @@ struct Bridges
 #    edges :: Array{SimpleEdge{Int64},1} #bridges
     edges:: Array{LightGraphs.SimpleGraphs.SimpleEdge{Int64},1}
     m :: Int64 # number of edges in Bridges
-    core1nodes :: Set{Int64}
+#    core1nodes :: Set{Int64} # I don't need to store core1nodes here
     core2nodes :: Set{Int64}
     core3nodes :: Set{Int64} 
     n :: Int64 # number of core2nodes
@@ -40,7 +40,7 @@ function addExtnodesInComponent(c:: Component, external:: Array{Int64,1})
     end
 end
 
-Bridges(edges, core1nodes:: Set{Int64}, core2nodes:: Set{Int64},  core3nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1),core1nodes,core2nodes, core3nodes,length(core2nodes), ext, zeros(Int64,length(core3nodes)))
+Bridges(edges, core2nodes:: Set{Int64},  core3nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1), core2nodes, core3nodes, length(core2nodes), ext, zeros(Int64,length(core3nodes)))
 
 # Bridges(edges, core1nodes:: Set{Int64}, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1),core1nodes,core2nodes, Set(edges),length(core2nodes), ext, zeros(Int64,length(edges)))
 
@@ -87,7 +87,6 @@ function printBridges(B:: Bridges)
     printEdges(B.edges)
     println("- m=",B.m)
     println("- length of edges =",length(B.edges))
-    println("- list of core1nodes=",B.core1nodes)
     println("- n=",B.n)
     println("- list of core2nodes=",B.core2nodes)
     println("- list of ext (count)=",B.ext)
