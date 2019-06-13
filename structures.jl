@@ -23,6 +23,7 @@ struct Bridges
     m :: Int64 # number of edges in Bridges
 #    core1nodes :: Set{Int64} # I don't need to store core1nodes here
     core2nodes :: Set{Int64}
+    # core3nodes is also within edges! edges should be removed and keep core3nodes only
     core3nodes :: Set{Int64}
     #core3nodes :: Vector{Int64}
     n :: Int64 # number of core2nodes

@@ -101,9 +101,9 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     ### we do not need to store the edge. Just the nodes
     core1nodes = Set{T}()
     core1neighbor = Array{Int64,1}()
-    core2nodes = Set{T}()
+    #core2nodes = Set{T}()
     core3nodes = Set{T}()
-
+    
     # We iterate over all vertices, and if they have already been visited (pre != 0), we don't start a DFS from that vertex.
     # The purpose is to create a DFS forest.
     @inbounds for u in vertices(g)
@@ -132,13 +132,15 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                     if length(v_neighbors) == 1
                         push!(core1nodes, v)
                         push!(core1neighbor, w)
-                        push!(core2nodes, w)
+                        #push!(core2nodes, w)
+                        ########
                         #edge = Edge(v,w)
                         #push!(bridges, edge)
                     elseif length(outneighbors(g, w)) == 1
                         push!(core1nodes, w)
                         push!(core1neighbor, v)
-                        push!(core2nodes, v)
+                        #push!(core2nodes, v)
+                        #########
                         #edge = Edge(v,w)
                         #push!(bridges, edge)
                     ### I do not care if edges are ordered    
@@ -179,31 +181,29 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         end
         
     end
+    ## core2pairs is replaced by sizes
+    # core2pairs = zeros(Int64, length(core2nodes))
+    # for (idx, u) in enumerate(core2nodes)
+    #     c = count(x->x==u,core1neighbor);
+    #     core2pairs[idx] = c;
+    # end
+    # println(core2pairs)
     t = time()
-    println("core1nodes", core1nodes, " , ", length(core1nodes))
-    println("core2nodes", core2nodes, " , ", length(core2nodes)) 
-    println("core1neighbor", core1neighbor, " , ", length(core1neighbor)) 
-    core2count = zeros(Int64, length(core2nodes))
-    for (idx, u) in enumerate(core2nodes)
-        c = count(x->x==u,core1neighbor);
-        core2count[idx] = c;
-    end
-    println(core2count)
-    println("COUNT TIMING IS ",time()- t, "(s)")
-    t = time()
-    sort(core1neighbor)
-    sizes = zeros(Int64,length(core2nodes))
+    ###### TODO: sort(unique()) or unique(sort()) ?
+    score1neighbor = sort(core1neighbor)
+    core2nodes = Array{Int64}()
+    core2nodes = unique(score1neighbor)
+    sizes = zeros(Int64, length(core2nodes))
     idx = 1
     sizes[1] = 1
-    for i in 2:length(core1neighbor)
-        if core1neighbor[i - 1] == core1neighbor[i]
+    for i in 2:length(score1neighbor)
+        if score1neighbor[i - 1] == score1neighbor[i]
             sizes[idx] += 1
         else
             idx += 1
             sizes[idx] += 1
         end
     end
-    println(sizes)
     ### TODO: sizes have been found but!! their index does not correspond
     ### to the index of core2nodes. ## One solution is to reorder sizes
     ### or core2nodes so that they much. The other solution is to sort
@@ -213,9 +213,9 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
 
     # println("core1nodes", core1nodes)
     # println("core2nodes", core2nodes)
-    # println("core2count", core2count)
+    # println("core2pairs", core2pairs)
     # println("core3nodes", core3nodes)
-    if length(findin(core1nodes,core2nodes)) != 0
+    if length(findin(core1nodes, core2nodes)) != 0
         println("WARNING!! Problem with core2 calculation")
         exit(1)
     end
@@ -224,9 +224,9 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         exit(1)
     end
 
-    B = Bridges(bridges, core2nodes, core3nodes, core2count)
+    B = Bridges(bridges, Set(core2nodes), core3nodes, sizes)
     ### remove the creation of core3nodes!!! and call following constructor
-    #B = Bridges(bridges, core2nodes, core2count)
+    #B = Bridges(bridges, core2nodes, core2pairs)
     
     return B, core1nodes
 end
