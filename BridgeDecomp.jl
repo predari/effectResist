@@ -312,21 +312,21 @@ A, L = sparseAdja(Line)
 # logw(w, "-------------------------------------------------------- ")
 
 
-for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
-    logw(w, "---------------------",rFile,"-------------------------- ")
-    logw(w, "Reading graph from edges list file ", rFile)
-    G = read_file(string(datadir,rFile))
-    logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
-    A, L = sparseAdja(G)
-    if !Laplacians.isConnected(A)
-        logw(w," WARNING: Graph is not connected. Program will exit!");
-        exit()
-    end
-    @time cfcAccelerate(A, w)
-    #A, L = sparseAdja(G)
-    #@time approx(A,L,w)
-    #@time exact(G,w)
-end
+# for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
+#     logw(w, "---------------------",rFile,"-------------------------- ")
+#     logw(w, "Reading graph from edges list file ", rFile)
+#     G = read_file(string(datadir,rFile))
+#     logw(w, "\t G.n: ", G.n, "\t G.m: ", G.m)
+#     A, L = sparseAdja(G)
+#     if !Laplacians.isConnected(A)
+#         logw(w," WARNING: Graph is not connected. Program will exit!");
+#         exit()
+#     end
+#     @time cfcAccelerate(A, w)
+#     #A, L = sparseAdja(G)
+#     #@time approx(A,L,w)
+#     #@time exact(G,w)
+# end
 
 
 

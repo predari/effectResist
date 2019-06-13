@@ -179,12 +179,38 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         end
         
     end
-        
+    t = time()
+    println("core1nodes", core1nodes, " , ", length(core1nodes))
+    println("core2nodes", core2nodes, " , ", length(core2nodes)) 
+    println("core1neighbor", core1neighbor, " , ", length(core1neighbor)) 
     core2count = zeros(Int64, length(core2nodes))
     for (idx, u) in enumerate(core2nodes)
         c = count(x->x==u,core1neighbor);
         core2count[idx] = c;
     end
+    println(core2count)
+    println("COUNT TIMING IS ",time()- t, "(s)")
+    t = time()
+    sort(core1neighbor)
+    sizes = zeros(Int64,length(core2nodes))
+    idx = 1
+    sizes[1] = 1
+    for i in 2:length(core1neighbor)
+        if core1neighbor[i - 1] == core1neighbor[i]
+            sizes[idx] += 1
+        else
+            idx += 1
+            sizes[idx] += 1
+        end
+    end
+    println(sizes)
+    ### TODO: sizes have been found but!! their index does not correspond
+    ### to the index of core2nodes. ## One solution is to reorder sizes
+    ### or core2nodes so that they much. The other solution is to sort
+    ### everything (maybe use OrderedSets). Also, I do really need to store
+    ### core2nodes and core1neighbors while searching for bridges... keep one and try to prealloc
+    println("COUNT TIMING IS ",time()- t, "(s)")
+
     # println("core1nodes", core1nodes)
     # println("core2nodes", core2nodes)
     # println("core2count", core2count)
