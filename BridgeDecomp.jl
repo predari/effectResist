@@ -176,6 +176,7 @@ end
 
 function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
+    B = Bridges
     B, core1nodes = bridges(LightGraphs.Graph(A))
     println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
     println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
@@ -196,13 +197,13 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     t = time()
     C = Array{Component,1}(ncmps)
     maxc = 0;
-    l = 1;
     #### Is : for i = eachindex(a) faster than for i = 1:n?
-    for i in 1:ncmps
+    for i in eachindex(cmps) #1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
         bdry = collect(intersect(Set(map[i]), B.core2nodes))
         link = collect(intersect(Set(map[i]), B.core3nodes))
+        #link = collect(intersect(Set(map[i]), Set(B.core3nodes)))
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
         B.comp[findin(B.core3nodes,link)] = i 
@@ -222,7 +223,12 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     start_time = time()
     n = A.n
     B = Bridges 
-    A, B = extractBridges(A)    
+    A, B = extractBridges(A)
+    # for (i,e) in enumerate(B.edges)
+    #     B.core3nodes[2*i - 1] = e.src
+    #     B.core3nodes[2*i] = e.dst
+    # end
+
     t = time()
     C = Array{Component,1}
     C = buildComponents(A, B)
@@ -238,13 +244,12 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
 
     t = time()
     for (idx, c) in enumerate(C)
-        if c.nc != 1
-            print("Approxing component $idx ...")
-            c.distances = localApprox(c, w)
-            println(" done")
-            #cf = exact(sparsemat2Graph(c.A), w )
-        end
+        print("Approxing component $idx ...")
+        c.distances = localApprox(c, w)
+        println(" done")
+        #cf = exact(sparsemat2Graph(c.A), w )
     end
+    
     println(" solving core1 time : ", time()- t, "(s)")
     if count == 1
         c = C[1] 
@@ -318,9 +323,9 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-    A, L = sparseAdja(G)
-    @time approx(A,L,w)
-    @time exact(G,w)
+    #A, L = sparseAdja(G)
+    #@time approx(A,L,w)
+    #@time exact(G,w)
 end
 
 

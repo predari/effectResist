@@ -46,7 +46,7 @@ using Laplacians
 # end # function
 
 
-function Comps(compvec::Vector{Ti}) where Ti
+function nodesInComps(compvec::Vector{Ti}) where Ti
     nc = maximum(compvec)
     sizes = zeros(Ti,nc)
     for i in compvec
@@ -67,7 +67,7 @@ function Comps(compvec::Vector{Ti}) where Ti
      end
 
     ptrs = zeros(Ti,nc)
-     for i in 1:length(compvec)
+     for i in eachindex(compvec)
         c = compvec[i]
         ptrs[c] += 1
         comps[c][ptrs[c]] = i
@@ -86,14 +86,11 @@ end # vecToComps
 #"""Returns also the mapping of nodes between subgraphs and original graph"""
 function allComp(mat:: SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
     cv = components(mat)
-    #nc = maximum(cv)
-    nodes = Comps(cv)
+    nodes = nodesInComps(cv)
     nc = length(nodes)
     comps = Vector{SparseMatrixCSC{Tv,Ti}}(nc) # (undef nc)
-    i = 1
-    for c in nodes
+    for (i, c) in enumerate(nodes)
         comps[i] = mat[c,c]
-        i = i + 1
     end
     return comps, nodes, nc
 end

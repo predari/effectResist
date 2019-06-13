@@ -23,7 +23,8 @@ struct Bridges
     m :: Int64 # number of edges in Bridges
 #    core1nodes :: Set{Int64} # I don't need to store core1nodes here
     core2nodes :: Set{Int64}
-    core3nodes :: Set{Int64} 
+    core3nodes :: Set{Int64}
+    #core3nodes :: Vector{Int64}
     n :: Int64 # number of core2nodes
     ext ::Array{Int64,1} # size of n , default 0, count of ext core1 nodes for each core2node 
     comp ::Array{Int64,1} # size of core3nodes , corresponding component
@@ -42,7 +43,7 @@ end
 
 Bridges(edges, core2nodes:: Set{Int64},  core3nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1), core2nodes, core3nodes, length(core2nodes), ext, zeros(Int64,length(core3nodes)))
 
-# Bridges(edges, core1nodes:: Set{Int64}, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1),core1nodes,core2nodes, Set(edges),length(core2nodes), ext, zeros(Int64,length(edges)))
+Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1), core2nodes, zeros(Int64,2*size(edges,1)), length(core2nodes), ext, zeros(Int64,2*length(edges)))
 
 # Bridges(edges, nodes) =
 #     Bridges(edges, size(edges,1),

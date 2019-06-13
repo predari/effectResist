@@ -90,7 +90,7 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
     return cf
 end
 
-
+#### TODO: check if I have matrix vector multiplications in here and perform it directly
 function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     start_time = time()
     f = approxCholLap(c.A,tol=1e-5);

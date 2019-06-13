@@ -199,7 +199,8 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     end
 
     B = Bridges(bridges, core2nodes, core3nodes, core2count)
-#    B = Bridges(bridges, core1nodes, core2nodes, core2count)
+    ### remove the creation of core3nodes!!! and call following constructor
+    #B = Bridges(bridges, core2nodes, core2count)
     
     return B, core1nodes
 end
