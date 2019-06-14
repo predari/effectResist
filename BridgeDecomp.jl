@@ -203,9 +203,12 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
         bdry = collect(intersect(Set(map[i]), B.core2nodes))
         link = collect(intersect(Set(map[i]), B.core3nodes))
+        println(bdry)
+        println(link)
         #link = collect(intersect(Set(map[i]), Set(B.core3nodes)))
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
+        println(B.ext[index])
         B.comp[findin(B.core3nodes,link)] = i 
         C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
@@ -233,13 +236,13 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
-    # println("Bridges:")
-    # printBridges(B)
-    # println("Components: $count")
-    # for (idx, c) in enumerate(C)
-    #     print("$idx")
-    #     printComponent(c)
-    # end
+    println("Bridges:")
+    printBridges(B)
+    println("Components: $count")
+    for (idx, c) in enumerate(C)
+        print("$idx")
+        printComponent(c)
+    end
     println("creating components time: ", time()- t, "(s)")
 
     t = time()

@@ -223,7 +223,7 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         println("WARNING!! Problem with core3 calculation")
         exit(1)
     end
-
+    println(core2nodes)
     B = Bridges(bridges, Set(core2nodes), core3nodes, sizes)
     ### remove the creation of core3nodes!!! and call following constructor
     #B = Bridges(bridges, core2nodes, core2pairs)
