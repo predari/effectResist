@@ -95,14 +95,13 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     s = Vector{Tuple{T, T, T}}()
     low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
     pre = zeros(T, nv(g)) #checks the entry time of a vertex in the DFS-stack, pre[u] = 0 if a vertex isn't visited; non-zero, otherwise
-    bridges = Edge{T}[]   #keeps record of the bridge-edges
-    
+    # bridges = Edge{T}[]   #keeps record of the bridge-edges
+    edges = Array{Int64,1}()
     ### if nodes of bridges belong to terminal components,
     ### we do not need to store the edge. Just the nodes
     core1nodes = Set{T}()
     core1neighbor = Array{Int64,1}()
-    #core2nodes = Set{T}()
-    core3nodes = Set{T}()
+    #core3nodes = Set{T}()
     
     # We iterate over all vertices, and if they have already been visited (pre != 0), we don't start a DFS from that vertex.
     # The purpose is to create a DFS forest.
@@ -151,10 +150,13 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                     #     push!(bridges, edge)
                         
                     else
-                        edge = Edge(w, v)
-                        push!(core3nodes,w);
-                        push!(core3nodes,v);
-                        push!(bridges, edge)
+                        ### I do not care about order!!
+                        # edge = Edge(w, v)
+                        # push!(core3nodes,w);
+                        # push!(core3nodes,v);
+                        # push!(bridges, edge)
+                        push!(edges,w)
+                        push!(edges,v)
                     end
                 end
                 wi += 1
@@ -219,14 +221,14 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         println("WARNING!! Problem with core2 calculation")
         exit(1)
     end
-    if length(findin(core1nodes,core3nodes)) != 0
+    if length(findin(core1nodes,edges)) != 0
         println("WARNING!! Problem with core3 calculation")
         exit(1)
     end
-    println(core2nodes)
-    B = Bridges(bridges, Set(core2nodes), core3nodes, sizes)
+    #println(core2nodes)
+    B = Bridges(edges, Set(core2nodes), sizes)
     ### remove the creation of core3nodes!!! and call following constructor
-    #B = Bridges(bridges, core2nodes, core2pairs)
+    #B = Bridges(edges, core2nodes, core2pairs)
     
     return B, core1nodes
 end

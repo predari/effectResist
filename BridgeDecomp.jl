@@ -152,9 +152,13 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
         A[u,rows[j]] = 0.0
         A[rows[j],u] = 0.0
     end
-    for e in B.edges
-        A[e.src,e.dst] = 0.0
-        A[e.dst,e.src] = 0.0
+    # for e in B.edges        
+    #     A[e.src,e.dst] = 0.0
+    #     A[e.dst,e.src] = 0.0
+    # end
+    for i in 1:2:B.m
+        A[B.edges[i],B.edges[i+1]] = 0.0
+        A[B.edges[i+1],B.edges[i]] = 0.0
     end
     return dropzeros!(A)
 end
@@ -181,6 +185,7 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
     println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
     println("finding bridges time: ", time() - start_time, "(s)")
+    println(core1nodes)
     #println("Bridges:")
     #printBridges(B)
     #println("- list of core1nodes=", core1nodes)
@@ -202,14 +207,13 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
         bdry = collect(intersect(Set(map[i]), B.core2nodes))
-        link = collect(intersect(Set(map[i]), B.core3nodes))
-        println(bdry)
-        println(link)
-        #link = collect(intersect(Set(map[i]), Set(B.core3nodes)))
+        link = collect(intersect(Set(map[i]), Set(B.edges)))
+        #println(bdry)
+        #println(link)
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
-        println(B.ext[index])
-        B.comp[findin(B.core3nodes,link)] = i 
+        #println(B.ext[index])
+        B.comp[findin(B.edges,link)] = i 
         C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
         if cmps[i].n >= maxc
@@ -236,13 +240,13 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
-    println("Bridges:")
-    printBridges(B)
-    println("Components: $count")
-    for (idx, c) in enumerate(C)
-        print("$idx")
-        printComponent(c)
-    end
+    # println("Bridges:")
+    # printBridges(B)
+    # println("Components: $count")
+    # for (idx, c) in enumerate(C)
+    #     print("$idx")
+    #     printComponent(c)
+    # end
     println("creating components time: ", time()- t, "(s)")
 
     t = time()
@@ -257,6 +261,8 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     if count == 1
         c = C[1] 
         cf = calculateCF(c.distances, n, c.nc)
+        println(indmax(cf))
+        println(findin(c.nodemap,[indmax(cf)]))
         logw(w,"\t node with argmax{c(", findin(c.nodemap,[indmax(cf)])[1], ")} = ", maximum(cf))
     end
     

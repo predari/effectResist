@@ -12,25 +12,6 @@ mutable struct Component
     external::Array{Int64,1}
 end
 
-# struct SimpleEdge{T<:Integer} #<: AbstractSimpleEdge{T}
-#      src::T
-#      dst::T
-# end
-
-struct Bridges
-#    edges :: Array{SimpleEdge{Int64},1} #bridges
-    edges:: Array{LightGraphs.SimpleGraphs.SimpleEdge{Int64},1}
-    m :: Int64 # number of edges in Bridges
-#    core1nodes :: Set{Int64} # I don't need to store core1nodes here
-    core2nodes :: Set{Int64}
-    # core3nodes is also within edges! edges should be removed and keep core3nodes only
-    core3nodes :: Set{Int64}
-    #core3nodes :: Vector{Int64}
-    n :: Int64 # number of core2nodes
-    ext ::Array{Int64,1} # size of n , default 0, count of ext core1 nodes for each core2node 
-    comp ::Array{Int64,1} # size of core3nodes , corresponding component
-end
-
 Component(A::SparseMatrixCSC{Float64},nodemap::Array{Int64,1}) = Component(A, A.n, nodemap,
                                                                            nothing, 0,
                                                                            #zeros(A.n)
@@ -42,9 +23,24 @@ function addExtnodesInComponent(c:: Component, external:: Array{Int64,1})
     end
 end
 
-Bridges(edges, core2nodes:: Set{Int64},  core3nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1), core2nodes, core3nodes, length(core2nodes), ext, zeros(Int64,length(core3nodes)))
+# struct SimpleEdge{T<:Integer} #<: AbstractSimpleEdge{T}
+#      src::T
+#      dst::T
+# end
 
-Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, size(edges,1), core2nodes, zeros(Int64,2*size(edges,1)), length(core2nodes), ext, zeros(Int64,2*length(edges)))
+struct Bridges
+    #    edges:: Array{LightGraphs.SimpleGraphs.SimpleEdge{Int64},1}
+    edges:: Array{Int64,1}
+    m :: Int64 # number of edges in Bridges = size(edges)/2
+    #    core1nodes :: Set{Int64} # I don't need to store core1nodes here
+    core2nodes :: Set{Int64}
+    #core3nodes :: Vector{Int64}
+    n :: Int64 # number of core2nodes
+    ext ::Array{Int64,1} # size of n , default 0, count of ext core1 nodes for each core2node 
+    comp ::Array{Int64,1} # size of edges , corresponding component
+end
+
+Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
 
 # Bridges(edges, nodes) =
 #     Bridges(edges, size(edges,1),
@@ -73,12 +69,10 @@ function printComponent(C:: Component)
     println("- list of external=",C.external)
 end
 
-function printEdges(edges:: Array{LightGraphs.SimpleGraphs.SimpleEdge{Int64},1})
-    m = size(edges,1)
-    
+function printEdges(edges:: Array{Int64,1}, m::Int64)
     print("- edges: ")
-    for i = 1:m
-        print("(",edges[i].src,",",edges[i].dst,") ")
+    for i in 1:2:m
+        print("(",edges[i],",",edges[i+1],") ")
     end
     println("")
 end
@@ -86,13 +80,13 @@ end
 
 function printBridges(B:: Bridges)
     #println()
-    printEdges(B.edges)
+    printEdges(B.edges,B.m)
     println("- m=",B.m)
     println("- length of edges =",length(B.edges))
     println("- n=",B.n)
     println("- list of core2nodes=",B.core2nodes)
     println("- list of ext (count)=",B.ext)
-    println("- list of core3nodes=",B.core3nodes)
+    println("- list of core3nodes=",B.edges)
     println("- comp of each node=",B.comp)
 end
 
