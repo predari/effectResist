@@ -33,14 +33,17 @@ struct Bridges
     edges:: Array{Int64,1}
     m :: Int64 # number of edges in Bridges = size(edges)/2
     #    core1nodes :: Set{Int64} # I don't need to store core1nodes here
-    core2nodes :: Set{Int64}
-    #core3nodes :: Vector{Int64}
+    #core2nodes :: Set{Int64}
+    core2nodes :: Vector{Int64}
     n :: Int64 # number of core2nodes
     ext ::Array{Int64,1} # size of n , default 0, count of ext core1 nodes for each core2node 
     comp ::Array{Int64,1} # size of edges , corresponding component
 end
 
 Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
+
+Bridges(edges :: Array{Int64,1}, core2nodes:: Array{Int64,1}, ext:: Array{Int64,1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
+
 
 # Bridges(edges, nodes) =
 #     Bridges(edges, size(edges,1),
@@ -59,9 +62,6 @@ Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, l
 function printComponent(C:: Component)
     println("- A type:",eltype(C.A))
     println("- A.n=",C.nc)
-    if C.nc == 2 || C.nc == 3
-        println(C.A)
-    end
     println("- list of nodes=",C.nodemap)
     println("- list of bdry=",C.bdry)
     println("- list of link=",C.link)

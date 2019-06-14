@@ -226,7 +226,7 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         exit(1)
     end
     #println(core2nodes)
-    B = Bridges(edges, Set(core2nodes), sizes)
+    B = Bridges(edges, core2nodes, sizes)
     ### remove the creation of core3nodes!!! and call following constructor
     #B = Bridges(edges, core2nodes, core2pairs)
     

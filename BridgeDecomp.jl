@@ -185,7 +185,7 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
     println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
     println("finding bridges time: ", time() - start_time, "(s)")
-    println(core1nodes)
+    #println("core1nodes",core1nodes)
     #println("Bridges:")
     #printBridges(B)
     #println("- list of core1nodes=", core1nodes)
@@ -206,13 +206,13 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     for i in eachindex(cmps) #1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        bdry = collect(intersect(Set(map[i]), B.core2nodes))
+        bdry = collect(intersect(map[i], B.core2nodes))
         link = collect(intersect(Set(map[i]), Set(B.edges)))
-        #println(bdry)
-        #println(link)
+        #println("bdry",bdry)
+        #println("link",link)
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
-        #println(B.ext[index])
+        #println("ext",B.ext[index])
         B.comp[findin(B.edges,link)] = i 
         C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
@@ -250,6 +250,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     println("creating components time: ", time()- t, "(s)")
 
     t = time()
+    
     for (idx, c) in enumerate(C)
         print("Approxing component $idx ...")
         c.distances = localApprox(c, w)
@@ -332,8 +333,8 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-    #A, L = sparseAdja(G)
-    #@time approx(A,L,w)
+    A, L = sparseAdja(G)
+    @time approx(A,L,w)
     #@time exact(G,w)
 end
 

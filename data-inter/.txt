@@ -1,0 +1,11 @@
+-------------------------------------------------------- 
+****** Running (chinese) approx ******
+	 node with argmax{c(5)} = 0.783582089552239
+---------------------out.arenas-pgp-------------------------- 
+Reading graph from edges list file out.arenas-pgp
+	 G.n: 10680	 G.m: 24316
+****** Running (chinese) approx ******
+	 node with argmax{c(183)} = 0.6883952586962477
+---------------------out.dbpedia-genre-------------------------- 
+Reading graph from edges list file out.dbpedia-genre
+	 G.n: 258770	 G.m: 463488
