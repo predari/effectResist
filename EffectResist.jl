@@ -64,7 +64,7 @@ function exact(G, alldistances, w :: IOStream)
         return distances
     else
         cf = calculateNodeDists(distances, G.n)
-        println("Distances:", cf)
+        #println("Distances:", cf)
         cf = calculateCF(cf, G.n)
         logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
              maximum(cf))
@@ -106,7 +106,7 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
 #    @time exact(G,w)
-#    @time exact(G,0,w)
+    #@time exact(G,0,w)
     @time approx(G,w)
     @time approx(G,0,w)
 end

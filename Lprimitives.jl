@@ -203,7 +203,7 @@ function erINV(G, alldistances)
     # inv or mppinv? TODO!
     Linv = inv(L2)
     distances = calculateCommuteDists(Linv, n, u)
-    println(distances)
+    #println(distances)
     return distances
 end
 
