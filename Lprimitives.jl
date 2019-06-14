@@ -134,8 +134,9 @@ function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4
     #     end
     # end
     #cf[:] = sum(er2) .+ (n-1)*er2 .-2er*(sum(er))
+    ###### before it was n-1
     for i in 1:n
-        cf[i] = sum(er2) + (n-1)*er2[i] -2er[i]*(sum(er))
+        cf[i] = sum(er2) + (n)*er2[i] -2er[i]*(sum(er))
     end
 
     #return distances;
@@ -203,7 +204,7 @@ function erINV(G, alldistances)
     # inv or mppinv? TODO!
     Linv = inv(L2)
     distances = calculateCommuteDists(Linv, n, u)
-    println(distances)
+    #println(distances)
     return distances
 end
 

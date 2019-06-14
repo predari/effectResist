@@ -96,6 +96,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     f = approxCholLap(c.A,tol=1e-5);
 
     nodes = c.nodemap
+    println(nodes)
     bdry = c.bdry
     external = c.external
     link = c.link
@@ -109,7 +110,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     er2 = zeros(n)
     ## first position for Sigma(d(u,v: where v not in bdry)). For d(u,bdry)
     ## position in cf is the same as in the bdry array
-    cf = zeros(n, sz + 1)
+    cf = zeros(n, sz + 1 )
     
     for i = 1:k # q 
         r = randn(m) 
@@ -125,8 +126,13 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     sumer = sum(er)    
     sumer2 = sum(er2)
 
+
+    println("bdry:",bdry)
     l3c_idx = findin(nodes, link)
     l2c_idx = findin(nodes, bdry)
+    println("local:",l2c_idx)
+    println("external:",external)
+    
     #println("l2c_idx (local numb):", l2c_idx)
     #println("l1c_idx (local numb):", l1c_idx)
 
@@ -145,7 +151,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
 
     cf[:,1] .= (n-sz)*er2 + sumer2 .-2er*sumer
     # for u in 1:n
-    #     #cf[u,1] =  sumer2 + (n-sz)*er2[u] -2er[u]*sumer
+    #     cf[u,1] =  sumer2 + (n-sz)*er2[u] -2er[u]*sumer
     #     ### I do the following for one extra time for u == v.
     #     ### To avoid do for v in setdiff(l1c_idx,u), but then
     #     ### the idx should be recomputed with findin etc.
@@ -160,7 +166,9 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     for (idx, v) in enumerate(l2c_idx)             
         cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * external[idx] + external[idx]
     end
+
     println("updating distances time:", time() - t, "(s)")
+    
     return cf
 end
 

@@ -49,7 +49,7 @@ function erJLT(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64})
     u = indmin(er)
     L = delnode2(L,u,n)
     A = delnode2(A,u,n)
-    cf = (n > 2000) ? (n/appxInvTrace(L;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
+    cf = (n > 200) ? (n/appxInvTrace(L;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
     end_approx_time = time()
     println("TOTAL APPROX TIME ISSSS: ", end_approx_time - start_approx_time, "(s)")    
   return u, cf;
@@ -60,6 +60,93 @@ function approx(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: 
     logw(w,"****** Running (chinese) approx ******")
     u, maxcf = erJLT(A,L)
     logw(w,"\t node with argmax{c(", u, ")} = ", maxcf)
+end
+
+
+function LinvdiagEdgeDist(a::SparseMatrixCSC{Float64}; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+
+    f = approxCholLap(a,tol=1e-5);
+    
+    n = size(a,1)
+    k = round(Int, JLfac*log(n)) # number of dims for JL
+    
+    U = wtedEdgeVertexMat(a)
+    m = size(U,1)
+    er2 = zeros(n)
+    er = zeros(n)
+    cf = zeros(n)
+    
+    # distances = Array{Array{Float64, 1}}(n-1)
+    # for i in indices(distances,1) distances[i] = [] end
+    # for i in 1:n-1
+    #     for j in i+1:n
+    #         push!(distances[i], 0.0)
+    #     end
+    # end
+    for i = 1:k # q 
+        # random gaussian projections Q
+        r = randn(m) 
+        # compute (QW^(1/2)B)
+        ur = U'*r 
+        v = zeros(n)
+        # solve(L, ((QW^(1/2)B)^T))^T
+        # v here is Z_{i,:}
+        v = f(ur[:])
+        #println("vector v=",v)
+        #println("type=",typeof(v),"size=",size(v,1),",",size(v,2))
+        # er(u) = Sigma_{v\in V\u}(Z_{u,v})^2
+        # decause I'll do the above k times
+        # given the k random projections,
+        # I have to divide by k
+        er.+= v./k
+        er2.+= v.^2/k
+    end
+    # for i in 1:n-1
+    #     for j in 1:n-i
+    #         #println(i,",",j,",",j+i)
+    #         distances[i][j] = er2[i] + er2[j+i] - 2*er[i]*er[j+1]
+    #     end
+    # end
+    #cf[:] = sum(er2) .+ (n-1)*er2 .-2er*(sum(er))
+    for i in 1:n
+        cf[i] = sum(er2) + (n-1)*er2[i] -2er[i]*(sum(er))
+    end
+    return cf
+end
+
+function erJLT(G, alldistances)
+    n = G.n
+    cf = zeros(n)
+    A, L = sparseAdja(G)
+    distances = LinvdiagEdgeDist(A;JLfac=200)
+    return distances
+end
+
+
+function approx(G, alldistances, w :: IOStream)
+    logw(w,"****** Running approx ******")
+    distances = erJLT(G, 1)
+    #println("Distances:", distances)
+    if alldistances == 1
+        return distances
+    else
+        if size(distances,1) == G.n-1
+            cf = calculateNodeDists(distances, G.n)
+        else
+            cf = distances
+        end
+        println("The value with core1nodes:")
+        println(cf)
+        cf = calculateCF(cf, G.n)
+         println("Final", cf)
+        # cf = zeros(G.n)
+        # for i in 1:G.n
+        #     cf[i] = G.n/distances[i]
+        # end
+        logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
+             maximum(cf))
+        return cf
+    end
 end
 
 # TODO: remove
@@ -106,9 +193,10 @@ end
 
 function localApprox(c :: Component, w :: IOStream)
     distances = LinvDistance(c)
-    #distances = LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap)
-    #println(distances)
+    println("my results:")
+    println(distances)
     distances = sum(distances,2)
+    #println(distances[1:30,:])
     #println(distances)
     c.distances = distances
     return distances
@@ -183,7 +271,7 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     println("finding bridges time: ", time() - start_time, "(s)")
     #println("Bridges:")
     #printBridges(B)
-    #println("- list of core1nodes=", core1nodes)
+    println("- list of core1nodes=", core1nodes)
     t = time()
     A  = removeBridges(A, B, core1nodes)
     println("remove bridges time: ", time()- t, "(s)")
@@ -201,14 +289,15 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     for i in eachindex(cmps) #1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        bdry = collect(intersect(Set(map[i]), B.core2nodes))
-        link = collect(intersect(Set(map[i]), B.core3nodes))
+        bdry = collect(intersect(B.core2nodes, Set(map[i])))
+        link = collect(intersect(B.core3nodes, Set(map[i])))
+        println("in buildComp")
         println(bdry)
-        println(link)
+        #println(link)
         #link = collect(intersect(Set(map[i]), Set(B.core3nodes)))
         #link = collect(intersect(Set(map[i]), Set(edges))) 
         index = findin(B.core2nodes,bdry)
-        println(B.ext[index])
+        #println(B.ext[index])
         B.comp[findin(B.core3nodes,link)] = i 
         C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
@@ -236,13 +325,13 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
-    println("Bridges:")
-    printBridges(B)
-    println("Components: $count")
-    for (idx, c) in enumerate(C)
-        print("$idx")
-        printComponent(c)
-    end
+    # println("Bridges:")
+    # printBridges(B)
+    # println("Components: $count")
+    # for (idx, c) in enumerate(C)
+    #     print("$idx")
+    #     printComponent(c)
+    # end
     println("creating components time: ", time()- t, "(s)")
 
     t = time()
@@ -257,6 +346,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     if count == 1
         c = C[1] 
         cf = calculateCF(c.distances, n, c.nc)
+        println("Final", cf)
         logw(w,"\t node with argmax{c(", findin(c.nodemap,[indmax(cf)])[1], ")} = ", maximum(cf))
     end
     
@@ -326,8 +416,10 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-    #A, L = sparseAdja(G)
-    #@time approx(A,L,w)
+    @time approx(G, 0, w)
+    A, L = sparseAdja(G)
+    @time approx(A,L,w)
+    exit()
     #@time exact(G,w)
 end
 
