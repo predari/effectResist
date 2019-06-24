@@ -96,7 +96,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     f = approxCholLap(c.A,tol=1e-5);
 
     nodes = c.nodemap
-    println(nodes)
+    #println(nodes)
     bdry = c.bdry
     external = c.external
     link = c.link
@@ -127,11 +127,11 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     sumer2 = sum(er2)
 
 
-    println("bdry:",bdry)
+    #println("bdry:",bdry)
     l3c_idx = findin(nodes, link)
     l2c_idx = findin(nodes, bdry)
-    println("local:",l2c_idx)
-    println("external:",external)
+    #println("local:",l2c_idx)
+    #println("external:",external)
     
     #println("l2c_idx (local numb):", l2c_idx)
     #println("l1c_idx (local numb):", l1c_idx)

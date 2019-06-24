@@ -11,6 +11,7 @@ include("LinvDistance.jl")
 include("structures.jl")
 using Laplacians
 using LightGraphs
+using DataStructures
 #using LightGraphs.SimpleEdge
 
 function delextnode(a::Array{Float64}, node::Int64)
@@ -57,7 +58,7 @@ function erJLT(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64})
 end
 
 function approx(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
-    logw(w,"****** Running (chinese) approx ******")
+    logw(w,"****** Running (competitor's) approx ******")
     u, maxcf = erJLT(A,L)
     logw(w,"\t node with argmax{c(", u, ")} = ", maxcf)
 end
@@ -135,10 +136,10 @@ function approx(G, alldistances, w :: IOStream)
         else
             cf = distances
         end
-        println("The value with core1nodes:")
-        println(cf)
+        #println("The value with core1nodes:")
+        #println(cf)
         cf = calculateCF(cf, G.n)
-         println("Final", cf)
+         #println("Final", cf)
         # cf = zeros(G.n)
         # for i in 1:G.n
         #     cf[i] = G.n/distances[i]
@@ -193,8 +194,8 @@ end
 
 function localApprox(c :: Component, w :: IOStream)
     distances = LinvDistance(c)
-    println("my results:")
-    println(distances)
+    #println("my results:")
+    #println(distances)
     distances = sum(distances,2)
     #println(distances[1:30,:])
     #println(distances)
@@ -271,7 +272,7 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     println("finding bridges time: ", time() - start_time, "(s)")
     #println("Bridges:")
     #printBridges(B)
-    println("- list of core1nodes=", core1nodes)
+    #println("- list of core1nodes=", core1nodes)
     t = time()
     A  = removeBridges(A, B, core1nodes)
     println("remove bridges time: ", time()- t, "(s)")
@@ -289,10 +290,11 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     for i in eachindex(cmps) #1:ncmps
         # Intersect with arrays is slow because in is slow with arrays.
         # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        bdry = collect(intersect(B.core2nodes, Set(map[i])))
-        link = collect(intersect(B.core3nodes, Set(map[i])))
-        println("in buildComp")
-        println(bdry)
+        # intersect(DataStructures.SortedSet([5,6,3,4,1]),Set([4,5,2,1,3]))
+        bdry = collect(intersect(DataStructures.SortedSet(B.core2nodes), Set(map[i])))
+        link = collect(intersect(DataStructures.SortedSet(B.core3nodes), Set(map[i])))
+        #println("in buildComp")
+        #println(bdry)
         #println(link)
         #link = collect(intersect(Set(map[i]), Set(B.core3nodes)))
         #link = collect(intersect(Set(map[i]), Set(edges))) 
@@ -346,8 +348,8 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     if count == 1
         c = C[1] 
         cf = calculateCF(c.distances, n, c.nc)
-        println("Final", cf)
-        logw(w,"\t node with argmax{c(", findin(c.nodemap,[indmax(cf)])[1], ")} = ", maximum(cf))
+        #println("Final", cf)
+        logw(w,"\t node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
     end
     
     # ncomps = 1
@@ -416,10 +418,9 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-    @time approx(G, 0, w)
+    #@time approx(G, 0, w)
     A, L = sparseAdja(G)
     @time approx(A,L,w)
-    exit()
     #@time exact(G,w)
 end
 
