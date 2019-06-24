@@ -12,6 +12,7 @@ include("structures.jl")
 using Laplacians
 using LightGraphs
 #using LightGraphs.SimpleEdge
+using DataStructures
 
 function delextnode(a::Array{Float64}, node::Int64)
     a2 = filter!(e->e!=node,a)
@@ -203,16 +204,19 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     C = Array{Component,1}(ncmps)
     maxc = 0;
     #### Is : for i = eachindex(a) faster than for i = 1:n?
+
     for i in eachindex(cmps) #1:ncmps
-        # Intersect with arrays is slow because in is slow with arrays.
-        # intersect(Set(a),Set(b)) is better. Or setdiff(a, setdiff(a, b))
-        bdry = collect(intersect(map[i], B.core2nodes))
-        link = collect(intersect(Set(map[i]), Set(B.edges)))
-        #println("bdry",bdry)
-        #println("link",link)
-        #link = collect(intersect(Set(map[i]), Set(edges))) 
+        bdry = collect(intersect(DataStructures.SortedSet(B.core2nodes), Set(map[i])))
+        # TODO: check if link has to be ordered or not!!!!
+        # TODO: check if intersect is still that bad with (sorted) arrays (compared to Sets)
+        #link = collect(intersect(DataStructures.SortedSet(B.edges), Set(map[i])))
+        link = collect(intersect(Set(B.edges), Set(map[i])))
+        #println("in buildComp")
+        #println(bdry)
+        #println(link)
+
         index = findin(B.core2nodes,bdry)
-        #println("ext",B.ext[index])
+        #println(B.ext[index])
         B.comp[findin(B.edges,link)] = i 
         C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
@@ -262,9 +266,8 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     if count == 1
         c = C[1] 
         cf = calculateCF(c.distances, n, c.nc)
-        println(indmax(cf))
-        println(findin(c.nodemap,[indmax(cf)]))
-        logw(w,"\t node with argmax{c(", findin(c.nodemap,[indmax(cf)])[1], ")} = ", maximum(cf))
+        #println("Final", cf)
+        logw(w,"\t node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
     end
     
     # ncomps = 1
