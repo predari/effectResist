@@ -67,6 +67,7 @@ function printComponent(C:: Component)
     println("- list of link=",C.link)
     println("- link.n=",C.linkc," (",100*C.linkc/C.nc,"%)")
     println("- list of external=",C.external)
+    #println("- cf-distances=",C.distances)
 end
 
 function printEdges(edges:: Array{Int64,1}, m::Int64)
@@ -80,7 +81,7 @@ end
 
 function printBridges(B:: Bridges)
     #println()
-    printEdges(B.edges,B.m)
+    printEdges(B.edges,length(B.edges))
     println("- m=",B.m)
     println("- length of edges =",length(B.edges))
     println("- n=",B.n)

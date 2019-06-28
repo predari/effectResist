@@ -1,0 +1,14 @@
+-------------------------------------------------------- 
+****** Running (chinese) approx ******
+	 node with argmax{c(2)} = 0.6153011394465548
+---------------------out.facebook-wosn-wall-------------------------- 
+Reading graph from edges list file out.facebook-wosn-wall
+	 G.n: 867940	 G.m: 867939
+WARNING: contracted graph should be a tree! 
+****** Running (chinese) approx ******
+	 node with argmax{c(1)} = 1.000001152154702
+---------------------out.movielens-1m-------------------------- 
+Reading graph from edges list file out.movielens-1m
+	 G.n: 464495	 G.m: 1698321
+****** Running (chinese) approx ******
+	 node with argmax{c(41027)} = 1.309783100117644

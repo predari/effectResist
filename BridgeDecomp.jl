@@ -8,11 +8,16 @@ include("appxInvTrace.jl")
 include("Linvdiag.jl")
 
 include("LinvDistance.jl")
+include("ShortestPaths.jl")
 include("structures.jl")
 using Laplacians
 using LightGraphs
 #using LightGraphs.SimpleEdge
 using DataStructures
+
+function isTree(A::SparseMatrixCSC)
+    isConnected(A) && (nnz(A) == 2*(A.n-1))
+end
 
 function delextnode(a::Array{Float64}, node::Int64)
     a2 = filter!(e->e!=node,a)
@@ -81,7 +86,7 @@ function exact(G, w :: IOStream)
     logw(w,"****** Running (my) exact ******")
     distances = erINV(G,1)
     cf = calculateNodeDists(distances, G.n)
-    #println("Exact distance:",cf)
+    println("Exact distance:",cf)
     cf = calculateCF(cf, G.n)
     logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
          maximum(cf))
@@ -107,11 +112,6 @@ end
 
 function localApprox(c :: Component, w :: IOStream)
     distances = LinvDistance(c)
-    #distances = LinvDistance(c.A, c.bdry, c.bdryc, c.nodemap)
-    #println(distances)
-    distances = sum(distances,2)
-    #println(distances)
-    c.distances = distances
     return distances
 end
 
@@ -157,7 +157,7 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
     #     A[e.src,e.dst] = 0.0
     #     A[e.dst,e.src] = 0.0
     # end
-    for i in 1:2:B.m
+    for i in 1:2:length(B.edges)
         A[B.edges[i],B.edges[i+1]] = 0.0
         A[B.edges[i+1],B.edges[i]] = 0.0
     end
@@ -183,8 +183,10 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
     B, core1nodes = bridges(LightGraphs.Graph(A))
-    println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
-    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
+    #println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
+    #println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
+    println((100*length(B.edges))/A.n, "% nodes are core 2++.")
+    println(100*length(core1nodes)/(A.n), "% nodes are core1.")
     println("finding bridges time: ", time() - start_time, "(s)")
     #println("core1nodes",core1nodes)
     #println("Bridges:")
@@ -228,6 +230,39 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     return C
 end
 
+function stripcore1nodes(comp  :: Array{Int64,1} , core3nodes :: Array{Int64,1})
+    ## assert such that length(comp) and length(core3nodes) is equal
+    pst = []
+    for i in eachindex(comp)
+        if comp[i] == 0
+            push!(pst,i)
+        end
+    end
+    #println(pst)
+    deleteat!(comp,pst)
+    deleteat!(core3nodes,pst)
+    return comp, core3nodes
+end
+function createTreeGraph(n  :: Int64)
+        # the construction of this graph is buggy!
+        ### TODO: think about what kind of graph (chinese type, sparsematrixCSC, lightgraph etc)
+        ### graph type you need!!
+        nbr = Array{Array{Int, 1}}(n)
+        for i in indices(nbr,1) nbr[i] = [] end
+        wgt = Array{Array{Int, 1}}(n)
+        for i in indices(wgt,1) wgt[i] = [] end
+        for i in 1:n-1
+            push!(nbr[i], i + 1)
+            push!(nbr[i + 1],i)
+            # if ncomp[i] != ncomp[i + 1]
+            #     wgt[] = something
+            # else
+            #     wgt[] = 1
+            # end
+        end
+    return Graph(n,n-1,nbr)
+end
+
 
 
 function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
@@ -239,18 +274,10 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     #     B.core3nodes[2*i - 1] = e.src
     #     B.core3nodes[2*i] = e.dst
     # end
-
     t = time()
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
-    # println("Bridges:")
-    # printBridges(B)
-    # println("Components: $count")
-    # for (idx, c) in enumerate(C)
-    #     print("$idx")
-    #     printComponent(c)
-    # end
     println("creating components time: ", time()- t, "(s)")
 
     t = time()
@@ -261,30 +288,149 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println(" done")
         #cf = exact(sparsemat2Graph(c.A), w )
     end
-    
+    println("Bridges:")
+    printBridges(B)
+    println("Components: $count")
+    for (idx, c) in enumerate(C)
+        print("$idx")
+        printComponent(c)
+    end
+
     println(" solving core1 time : ", time()- t, "(s)")
     if count == 1
-        c = C[1] 
+        c = C[1]
+        c.distances = sum(c.distances,2)
         cf = calculateCF(c.distances, n, c.nc)
         #println("Final", cf)
         logw(w,"\t node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
+    else
+        # this is not correct yet, need to also remove the info for nodes
+        # connected with core1nodes
+        println("length = ",length(B.edges))
+        println("components:", B.comp)
+        println("edges:", B.edges)
+        
+        newcomp, newedges = stripcore1nodes(B.comp,B.edges)
+        println(newcomp)
+        println(newedges)
+        n = length(newcomp)
+        # cG = createTreeGraph(n)
+        # println(cG)
+        # cA, cL = sparseAdja(cG)
+        cVertices = Array{cVertex}(count)
+        nodes = Array{Array{Int, 1}}(count)
+        rnodes = Array{Array{Int, 1}}(count)
+        for i in indices(nodes,1) nodes[i] = [] end
+        for i in indices(rnodes,1) rnodes[i] = [] end
+        for (i,e) in enumerate(newedges)
+            push!(rnodes[newcomp[i]], e)
+            push!(nodes[newcomp[i]], i)
+        end
+        #println("cVertices:")
+        for i in 1:count
+            cVertices[i] = cVertex(i,nodes[i],rnodes[i],count)
+            #printcVertex(cVertices[i])
+        end
+        cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+        for i in 1:n-1
+            if newcomp[i] != newcomp[i + 1]
+                cA[i,i+1] .= 1.0
+                cA[i+1,i] .= 1.0
+            else
+                c = C[newcomp[i]]
+
+                #println(c.link, newedges[i])
+                lidx1 = findin(c.link, newedges[i])
+                lidx2 = findin(c.nodemap, newedges[i + 1])
+                #### TODO: restore values!!!
+                dist = getindex(c.distances[lidx1 + 1,lidx2])
+                #println("idx = ",lidx1 + 1,lidx2, dist)
+                cA[i,i+1] .= dist
+                cA[i+1,i] .= dist
+            end
+        end
+        if !isTree(cA)
+            logw(w,"WARNING: contracted graph should be a tree! ");
+        end
+        #println(cA)
+        println("number of components:", n)
+        
+        dist2 = zeros(Float64,count,count) # or count
+        for i in 1:n
+            x = newcomp[i]
+            if sum(dist2[x,:]) != 0.0
+                tmp , p =  shortestPaths(cA, i, newcomp, cVertices, count)
+                #shortestPaths(cA, i, newcomp, count)
+                println(p)
+                for j in 1:count
+                    dist2[x,j] = dist2[x,j] < tmp[j] ? dist2[x,j] : tmp[j] 
+                end
+            else
+                dist2[x,:], p = shortestPaths(cA, i, newcomp, cVertices, count)
+                #shortestPaths(cA, i, newcomp, count)
+            end
+            #println("dist2",dist2)
+            #println("p",p)
+        end
+        println("Final dist2:")
+        println(dist2)
+        println("dist2 after summation:")
+        distcomp = sum(dist2,2)
+        println(distcomp)
+        rx :: Int64 = 0
+        for i in 1:count
+            # for i I need Component structure (C[])
+             for j in 1:count
+                # for j I need cVertex structure (cVertices[])
+                if j == i continue; end
+                if cVertices[i].cmplist[j] == 0
+                    rx = getindex(cVertices[j].rx[1])
+                else
+                    idx = findin(cVertices[j].x, cVertices[i].cmplist[j])
+                    rx = getindex(cVertices[j].rx[idx])
+                    #rx = cVertices[i].cmplist[j]
+                end
+                idx = findin(C[j].link, rx)
+                #println("rx and idx", rx, idx+1)
+                #println(C[j].distances[:,idx+1], sum(C[j].distances[:,idx+1]))
+                distcomp[i] += sum(C[j].distances[:,idx+1])
+             end
+        end
+        println("distcomp:")
+        println(distcomp)
+        for (idx, c) in enumerate(C)
+            if length(c.link) == 2
+                for i in length(c.link)
+                    ## add it one more time
+                    c.distances[:,i+1] += c.distances[:,i+1]
+                end
+            elseif length(c.link) == 1
+                ## add it two more times (this is hardcoded, I have to find how many times)
+                c.distances[:,2] += 2*c.distances[:,2]
+            end
+            c.distances = sum(c.distances,2) + distcomp[idx]
+            println("distances:")
+            println(c.distances)
+            #c.distances = sum(c.distances,2)
+            #cf = calculateCF(c.distances, n, c.nc)
+        end
     end
     
-    # ncomps = 1
-    # for c in comps
-    #     if c.n != 1
-    #         C = sparsemat2Graph(c)
-    #         idx = nodes[ncomps]
-    #         ldistance = exact(C,1,w)
-    #         ldistance = full(ldistance)
-    #         s = size(ldistance,1)
-    #         for i in 1:s
-    #             distances[idx[i],idx[i+1:end]] = ldistance[i]
-    #             println(idx[i],",",idx[i+1:end])
-    #         end
-    #     end
-    #     ncomps = ncomps + 1
-    # end
+    # # ncomps = 1
+    # # for c in comps
+    # #     if c.n != 1
+    # #         C = sparsemat2Graph(c)
+    # #         idx = nodes[ncomps]
+    # #         ldistance = exact(C,1,w)
+    # #         ldistance = full(ldistance)
+    # #         s = size(ldistance,1)
+    # #         for i in 1:s
+    # #             distances[idx[i],idx[i+1:end]] = ldistance[i]
+    # #             println(idx[i],",",idx[i+1:end])
+    # #         end
+    # #     end
+    # #     ncomps = ncomps + 1
+    # # end
     println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
 end
 
@@ -298,14 +444,15 @@ logw(w, "-------------------------------------------------------- ")
 #m = 20
 #Line = Components3Graph(n,m)
 
-Line = TestGraph(15, 40)
+Line = TestGraph(18, 48)
 println(Line)
 A, L = sparseAdja(Line)
 @time approx(A,L,w)
-Line = TestGraph(15, 40)
+Line = TestGraph(18, 48)
 println(Line)
 A, L = sparseAdja(Line)
 @time cfcAccelerate(A,w)
+@time exact(Line,w)
 
 # Line = subTestGraph(11, 30)
 # println(Line)
@@ -324,6 +471,7 @@ A, L = sparseAdja(Line)
 # approx(A,L,w)
 # logw(w, "-------------------------------------------------------- ")
 
+exit()
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -339,6 +487,7 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     A, L = sparseAdja(G)
     @time approx(A,L,w)
     #@time exact(G,w)
+    exit()
 end
 
 

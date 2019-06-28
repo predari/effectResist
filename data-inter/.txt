@@ -1,56 +1,18 @@
+-------------------------------------------------------- 
+****** Running (chinese) approx ******
+	 node with argmax{c(2)} = 0.6153011394465548
 ---------------------out.arenas-pgp-------------------------- 
 Reading graph from edges list file out.arenas-pgp
 	 G.n: 10680	 G.m: 24316
 ****** Running (chinese) approx ******
-	 node with argmax{c(183)} = 0.6885188991055918
-****** Running approx ******
-	 node with argmax{c(183)} = 0.6886188900882894
----------------------out.dbpedia-genre-------------------------- 
-Reading graph from edges list file out.dbpedia-genre
-	 G.n: 258770	 G.m: 463488
-****** Running (chinese) approx ******
-	 node with argmax{c(29164)} = 1.33348380034262
-****** Running approx ******
-	 node with argmax{c(29164)} = 1.3334715492428333
----------------------out.douban-------------------------- 
-Reading graph from edges list file out.douban
-	 G.n: 154908	 G.m: 327162
-****** Running (chinese) approx ******
-	 node with argmax{c(67)} = 1.2065694740779398
-****** Running approx ******
-	 node with argmax{c(845)} = 1.2064944024854667
----------------------out.ego-twitter-------------------------- 
-Reading graph from edges list file out.ego-twitter
-	 G.n: 81306	 G.m: 1342296
-****** Running (chinese) approx ******
-	 node with argmax{c(594)} = 5.472235747521693
-****** Running approx ******
-	 node with argmax{c(594)} = 5.471694468398727
+	 node with argmax{c(183)} = 0.6880838444041704
 ---------------------out.reactome-------------------------- 
 Reading graph from edges list file out.reactome
 	 G.n: 5973	 G.m: 145778
 ****** Running (chinese) approx ******
-	 node with argmax{c(968)} = 3.588011562670954
-****** Running approx ******
-	 node with argmax{c(175)} = 3.583305798127143
+	 node with argmax{c(968)} = 3.5789067388973757
 ---------------------out.z-caida20071105-------------------------- 
 Reading graph from edges list file out.z-caida20071105
 	 G.n: 26475	 G.m: 53381
 ****** Running (chinese) approx ******
-	 node with argmax{c(164)} = 1.38457791385364
-****** Running approx ******
-	 node with argmax{c(164)} = 1.3843429670604035
--------------------------------------------------------- 
-****** Running (my) exact ******
-	 node with argmax{c(5)} = 0.9142857142857145
-****** Running approx ******
-	 node with argmax{c(4)} = 0.953034197051705
-****** Running (my) exact ******
-	 node with argmax{c(4)} = 2.2857142857142865
-****** Running approx ******
-	 node with argmax{c(2)} = 2.42392208762771
-****** Running (my) exact ******
-	 node with argmax{c(1)} = 2.25
-****** Running approx ******
-	 node with argmax{c(1)} = 2.5653093303743653
-****** Running starDecomp ******
+	 node with argmax{c(164)} = 1.384103602350808
