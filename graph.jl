@@ -326,17 +326,18 @@ end
 
 
 function subTestGraph(n:: Int, m:: Int)
-    ## n = 11 m = 15*2
+    ## n = 14 m = 19*2
     nbr = Array{Array{Int, 1}}(n)
     for i in indices(nbr,1) nbr[i] = [] end
-    push!(nbr[1], 10)
-    push!(nbr[1], 11)
+    push!(nbr[1], 13)
+    push!(nbr[1], 14)
     push!(nbr[1], 2)
     push!(nbr[1], 3)
     push!(nbr[1], 4)
     push!(nbr[2], 1)
     push!(nbr[2], 5)
     push!(nbr[2], 9)
+    push!(nbr[2], 10)
     push!(nbr[3], 1)
     push!(nbr[3], 4)
     push!(nbr[3], 5)
@@ -357,8 +358,15 @@ function subTestGraph(n:: Int, m:: Int)
     push!(nbr[8], 7)
     push!(nbr[9], 2)
     push!(nbr[9], 5)
-    push!(nbr[10], 1)
-    push!(nbr[11], 1)
+    push!(nbr[10], 2)
+    push!(nbr[10], 11)
+    push!(nbr[10], 12)
+    push!(nbr[11], 10)
+    push!(nbr[11], 12)
+    push!(nbr[12], 10)
+    push!(nbr[12], 11)
+    push!(nbr[13], 1)
+    push!(nbr[14], 1)
     
     return Graph(n,m,nbr)
 end

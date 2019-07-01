@@ -309,7 +309,13 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println("length = ",length(B.edges))
         println("components:", B.comp)
         println("edges:", B.edges)
-        
+        # totalnodes = 0
+        # for i in C
+        #     totalnodes += C[i].nc
+        # end
+        finaldist = []
+        finalcomp = []
+        finalnodes = []
         newcomp, newedges = stripcore1nodes(B.comp,B.edges)
         println(newcomp)
         println(newedges)
@@ -338,7 +344,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
                 cA[i+1,i] .= 1.0
             else
                 c = C[newcomp[i]]
-
+                
                 #println(c.link, newedges[i])
                 lidx1 = findin(c.link, newedges[i])
                 lidx2 = findin(c.nodemap, newedges[i + 1])
@@ -372,15 +378,27 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             #println("dist2",dist2)
             #println("p",p)
         end
-        println("Final dist2:")
+        println("Dist between components:")
         println(dist2)
-        println("dist2 after summation:")
-        distcomp = sum(dist2,2)
-        println(distcomp)
+        sizes = zeros(Int64,count)
+        for i in 1:count
+            te = 0
+            for j in C[i].external
+                te += j 
+            end
+            sizes[i] = C[i].nc + te
+        end
+        println("Sizes:")
+        println(sizes)
+        #distcomp = dist2*sizes
+        #distcomp = sum(dist2,2)
+        #println(distcomp, sum(dist2,2), sizes)
+        distcomp = zeros(Float64,count)
         rx :: Int64 = 0
         for i in 1:count
             # for i I need Component structure (C[])
-             for j in 1:count
+            println("- C[$i] cf-distances=",C[i].distances)
+            for j in 1:count
                 # for j I need cVertex structure (cVertices[])
                 if j == i continue; end
                 if cVertices[i].cmplist[j] == 0
@@ -393,29 +411,49 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
                 idx = findin(C[j].link, rx)
                 #println("rx and idx", rx, idx+1)
                 #println(C[j].distances[:,idx+1], sum(C[j].distances[:,idx+1]))
-                distcomp[i] += sum(C[j].distances[:,idx+1])
+                 #distcomp[i] += sum(C[j].distances[:,idx+1])
+                 distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
              end
         end
         println("distcomp:")
         println(distcomp)
+        #sizes -= 1
         for (idx, c) in enumerate(C)
             if length(c.link) == 2
                 for i in length(c.link)
                     ## add it one more time
-                    c.distances[:,i+1] += c.distances[:,i+1]
+                    if i == 1
+                        c.distances[:,i+1] += (c.distances[:,i+1] * sizes[1])
+                    else
+                        c.distances[:,i+1] += (c.distances[:,i+1] * sizes[3])
+                    end
                 end
             elseif length(c.link) == 1
                 ## add it two more times (this is hardcoded, I have to find how many times)
-                c.distances[:,2] += 2*c.distances[:,2]
+                if idx == 1
+                    c.distances[:,2] += (c.distances[:,2] * (sizes[2]))
+                elseif idx == 2
+                    c.distances[:,2] += (c.distances[:,2] * (sizes[1]))
+                end
             end
             c.distances = sum(c.distances,2) + distcomp[idx]
             println("distances:")
+            
+            finaldist = [finaldist ; c.distances]
+            finalnodes = [finalnodes ; c.nodemap]
+            finalcomp = [finalcomp ; idx*ones(Int64,length(c.distances))]
+
             println(c.distances)
             #c.distances = sum(c.distances,2)
             #cf = calculateCF(c.distances, n, c.nc)
         end
-    end
-    
+end
+println(finaldist)
+println(finalcomp)
+println(finalnodes)
+cf = calculateCF(finaldist, A.n,length(finaldist))
+println(finalcomp[indmax(cf)],finalnodes[indmax(cf)])
+logw(w,"\t node with argmax{c(", C[finalcomp[indmax(cf)]].nodemap[finalnodes[indmax(cf)]], ")} = ", maximum(cf))
     # # ncomps = 1
     # # for c in comps
     # #     if c.n != 1
@@ -444,16 +482,17 @@ logw(w, "-------------------------------------------------------- ")
 #m = 20
 #Line = Components3Graph(n,m)
 
-Line = TestGraph(18, 48)
+#Line = TestGraph(18, 48)
+Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time approx(A,L,w)
-Line = TestGraph(18, 48)
+Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time cfcAccelerate(A,w)
 @time exact(Line,w)
-
+exit()
 # Line = subTestGraph(11, 30)
 # println(Line)
 # A, L = sparseAdja(Line)
@@ -471,7 +510,6 @@ A, L = sparseAdja(Line)
 # approx(A,L,w)
 # logw(w, "-------------------------------------------------------- ")
 
-exit()
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -484,10 +522,10 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
+
     A, L = sparseAdja(G)
     @time approx(A,L,w)
-    #@time exact(G,w)
-    exit()
+    @time exact(G,w)
 end
 
 

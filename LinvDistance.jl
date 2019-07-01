@@ -120,25 +120,28 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
         er2.+= v.^2/k
     end
     println("solving approxCholLap time:", time() - start_time, "(s)")
-    
+    #er = sqrt.(er2)
+    println("er",er)
+    println("er2",er2)
+    println("er2[2]",er2[2], "er[2] ",er[2])
     t = time()
     sumer = sum(er)    
     sumer2 = sum(er2)
 
     l3c_idx = findin(nodes, link)
     l2c_idx = findin(nodes, bdry)
-#    println("l3c_idx (local link numb):", l3c_idx)
+    println("l3c_idx (local link numb):", l3c_idx)
 #    println("l2c_idx (local bdry numb):", l2c_idx)
 
     for (idx, u) in enumerate(l3c_idx)
-        cf[:,idx + 1] .= er2 + er2[u] .- 2er*er[u]
-        # for i in 1:n
-        #     cf[i, idx + 1] = er2[i] + er2[u] -2er[i]*er[u]
-        # end
+        #cf[:,idx + 1] .= er2 + er2[u] .- 2er*er[u]
+        for i in 1:n
+            cf[i, idx + 1] = er2[i] + er2[u] -2er[i]*er[u]
+        end
         sumer += - er[u]
         sumer2 += - er2[u]
     end
-
+    println(cf)
     #multiplier = external[findin(bdry,getindex(nodes,l1c_idx))]
     #println("l1c_idx (local numb):", l1c_idx)
     #println("multiplier :", multiplier)
@@ -160,7 +163,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     for (idx, v) in enumerate(l2c_idx)             
         cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * external[idx] + external[idx]
     end
-    #println(cf)
+
     println("updating distances time:", time() - t, "(s)")
     return cf
 end
