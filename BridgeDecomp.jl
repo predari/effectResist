@@ -332,10 +332,10 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             push!(rnodes[newcomp[i]], e)
             push!(nodes[newcomp[i]], i)
         end
-        #println("cVertices:")
+        println("cVertices:")
         for i in 1:count
             cVertices[i] = cVertex(i,nodes[i],rnodes[i],count)
-            #printcVertex(cVertices[i])
+            printcVertex(cVertices[i])
         end
         cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
         for i in 1:n-1
@@ -390,9 +390,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         end
         println("Sizes:")
         println(sizes)
-        #distcomp = dist2*sizes
-        #distcomp = sum(dist2,2)
-        #println(distcomp, sum(dist2,2), sizes)
         distcomp = zeros(Float64,count)
         rx :: Int64 = 0
         for i in 1:count
@@ -418,57 +415,60 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println("distcomp:")
         println(distcomp)
         #sizes -= 1
-        for (idx, c) in enumerate(C)
-            if length(c.link) == 2
-                for i in length(c.link)
-                    ## add it one more time
-                    if i == 1
-                        c.distances[:,i+1] += (c.distances[:,i+1] * sizes[1])
-                    else
-                        c.distances[:,i+1] += (c.distances[:,i+1] * sizes[3])
-                    end
-                end
-            elseif length(c.link) == 1
-                ## add it two more times (this is hardcoded, I have to find how many times)
-                if idx == 1
-                    c.distances[:,2] += (c.distances[:,2] * (sizes[2]))
-                elseif idx == 2
-                    c.distances[:,2] += (c.distances[:,2] * (sizes[1]))
+        for i in 1:2:length(B.edges)
+            print("(",B.edges[i],",",B.edges[i+1],") \n")
+            for (idx, c) in enumerate(B.comp[i:i+1])
+                println(idx, c, C[c].link)
+                for i in 1:length(C[c].link)
+                    
+                    println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
+                    C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[B.comp[Int(2/idx)]])
                 end
             end
+        end
+        for (idx, c) in enumerate(C)
             c.distances = sum(c.distances,2) + distcomp[idx]
             println("distances:")
-            
+            println(c.distances)
             finaldist = [finaldist ; c.distances]
             finalnodes = [finalnodes ; c.nodemap]
             finalcomp = [finalcomp ; idx*ones(Int64,length(c.distances))]
-
-            println(c.distances)
-            #c.distances = sum(c.distances,2)
-            #cf = calculateCF(c.distances, n, c.nc)
+           
         end
+        # for (idx, c) in enumerate(C)
+        #     if length(c.link) == 2
+        #         for i in 1:length(c.link)
+        #             ## add it one more time
+        #             if i == 1
+        #                 c.distances[:,i+1] += (c.distances[:,i+1] * sizes[1])
+        #             else
+        #                 c.distances[:,i+1] += (c.distances[:,i+1] * sizes[3])
+        #             end
+        #         end
+        #     elseif length(c.link) == 1
+        #         ## add it two more times (this is hardcoded, I have to find how many times)
+        #         if idx == 1
+        #             c.distances[:,2] += (c.distances[:,2] * (sizes[2]))
+        #         elseif idx == 2
+        #             c.distances[:,2] += (c.distances[:,2] * (sizes[1]))
+        #         end
+        #     end
+        #     c.distances = sum(c.distances,2) + distcomp[idx]
+        #     println("distances:")
+        #     println(c.distances)
+        #     finaldist = [finaldist ; c.distances]
+        #     finalnodes = [finalnodes ; c.nodemap]
+        #     finalcomp = [finalcomp ; idx*ones(Int64,length(c.distances))]
+            
+        # end
 end
 println(finaldist)
 println(finalcomp)
 println(finalnodes)
 cf = calculateCF(finaldist, A.n,length(finaldist))
 println(finalcomp[indmax(cf)],finalnodes[indmax(cf)])
-logw(w,"\t node with argmax{c(", C[finalcomp[indmax(cf)]].nodemap[finalnodes[indmax(cf)]], ")} = ", maximum(cf))
-    # # ncomps = 1
-    # # for c in comps
-    # #     if c.n != 1
-    # #         C = sparsemat2Graph(c)
-    # #         idx = nodes[ncomps]
-    # #         ldistance = exact(C,1,w)
-    # #         ldistance = full(ldistance)
-    # #         s = size(ldistance,1)
-    # #         for i in 1:s
-    # #             distances[idx[i],idx[i+1:end]] = ldistance[i]
-    # #             println(idx[i],",",idx[i+1:end])
-    # #         end
-    # #     end
-    # #     ncomps = ncomps + 1
-    # # end
+#logw(w,"\t node with argmax{c(", C[finalcomp[indmax(cf)]].nodemap[finalnodes[indmax(cf)]], ")} = ", maximum(cf))
+logw(w,"\t node with argmax{c(", finalnodes[indmax(cf)], ")} = ", maximum(cf))
     println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
 end
 
@@ -482,33 +482,18 @@ logw(w, "-------------------------------------------------------- ")
 #m = 20
 #Line = Components3Graph(n,m)
 
-#Line = TestGraph(18, 48)
-Line = subTestGraph(14, 38)
+Line = TestGraph(18, 48)
+#Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time approx(A,L,w)
-Line = subTestGraph(14, 38)
+Line = TestGraph(18, 48)
+#Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time cfcAccelerate(A,w)
 @time exact(Line,w)
 exit()
-# Line = subTestGraph(11, 30)
-# println(Line)
-# A, L = sparseAdja(Line)
-# cfcAccelerate(A,w)
-# approx(A,L,w)
-# Line = subTestGraph2(8, 24)
-# println(Line)
-# A, L = sparseAdja(Line)
-# cfcAccelerate(A,w)
-# #println("TODO: here you multiply by: ",Line.n,"instead of the size of cf: ", size(cf,1))
-# #cf = calculateCF(cf, Line.n, size(cf,1))
-# #logw(w,"\t node with argmax{c(", indmax(cf), ")} = ", maximum(cf))
-# #distances = cfcaccelerate(Line, w)
-# #println(distances)
-# approx(A,L,w)
-# logw(w, "-------------------------------------------------------- ")
 
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
@@ -525,102 +510,6 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
 
     A, L = sparseAdja(G)
     @time approx(A,L,w)
-    @time exact(G,w)
+#    @time exact(G,w)
 end
 
-
-
-
-# function cfcAccelerate(G, w :: IOStream)
-#     A =  sparseAdja2(G)
-#     n = G.n
-#     br = bridges(LightGraphs.Graph(A))
-#     println(br)
-#     #distances = zeros(n,n)
-#     # distances = Array{Array{Float64, 1}}(n-1)
-#     # for i in indices(distances,1) distances[i] = [] end
-#     # for i in 1:n-1
-#     #     for j in i+1:n
-#     #         push!(distances[i], 0.0)
-#     #     end
-#     # end
-#     A = removeBridges(A,br)
-#     # for e in bg
-#     #     x = e.src
-#     #     y = e.dst
-#     #     A[x,y] = 0
-#     #     A[y,x] = 0
-#     # end
-#     # dropzeros!(A)
-
-#     cmps, mapping, ncmps = allComp(A)
-#     println(cmps)
-#     println(mapping)
-#     println(ncmps)
-#     ncomps = 1
-#     println("Running components:")
-#     for c in comps
-#         println(c,ncomps)
-#         if c.n != 1
-#             C = sparsemat2Graph(c)
-#             idx = nodes[ncomps]
-#             println(idx)
-#             ldistance = exact(C,1,w)
-#             ldistance = full(ldistance)
-#             s = size(ldistance,1)
-#             println("component size:",s, ",", size(ldistance,2))
-#             println(ldistance)
-#             for i in 1:s
-#                 distances[idx[i],idx[i+1:end]] = ldistance[i]
-#                 println(idx[i],",",idx[i+1:end])
-#                 println(ldistance[i])
-#             end
-#         end
-#         ncomps = ncomps + 1
-#     end
-#     for i in 1:n
-#         for j in 1:n
-#             if distances[i,j] != 0.0
-#                 distances[j,i] = distances[i,j]
-#             end
-#         end
-#     end
-    
-#     println(ncomps)
-#     idx = []
-#     for e in bg
-#         x = e.src
-#         y = e.dst
-#         println(x,",",y)
-#         #pull!(nbr[x][y])
-#         if x < y 
-#             distances[x,y] = 1
-#             distances[y,x] = 1
-#             for i in 1:ncomps
-#                 j = find(e -> e == x ,nodes[i])
-#                 if isempty(j) == false
-                    
-#                     c = comps[i]
-#                     idx = nodes[i]
-#                     #println("(",c,",",idx,")")
-#                     break; # (i,j) (component, idx in nodes)
-#                 end
-#             end
-#             #println("(",i,",",j,")")
-#             idxr = filter!(e->e!=x,idx)
-#             println(idxr)
-#             for l in idxr
-#                 distances[l,y] = distances[l,x] + 1
-#             end
-#             for i in 1:n
-#                 for j in 1:n
-#                     if distances[i,j] != 0.0
-#                         distances[j,i] = distances[i,j]
-#                     end
-#                 end
-#             end
-#         end
-#     end
-#     distances
-# return distances
-# end

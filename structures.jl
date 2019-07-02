@@ -70,9 +70,9 @@ function printComponent(C:: Component)
     #println("- cf-distances=",C.distances)
 end
 
-function printEdges(edges:: Array{Int64,1}, m::Int64)
+function printEdges(edges:: Array{Int64,1}, n::Int64)
     print("- edges: ")
-    for i in 1:2:m
+    for i in 1:2:n
         print("(",edges[i],",",edges[i+1],") ")
     end
     println("")

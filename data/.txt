@@ -1,6 +1,6 @@
 -------------------------------------------------------- 
 ****** Running (chinese) approx ******
-	 node with argmax{c(1)} = 0.8927125506072874
-	 node with argmax{c(5)} = 0.8837394747812177
+	 node with argmax{c(2)} = 0.6153011394465548
+	 node with argmax{c(5)} = 0.6447377830173783
 ****** Running (my) exact ******
-	 node with argmax{c(2)} = 0.8981670061099797
+	 node with argmax{c(2)} = 0.6153011394465543
