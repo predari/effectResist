@@ -320,22 +320,35 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         end
 
         cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
-        for i in 1:n-1
-            if newcomp[i] != newcomp[i + 1]
+        for i in 1:2:length(newedges)
                 cA[i,i+1] .= 1.0
                 cA[i+1,i] .= 1.0
-            else
-                c = C[newcomp[i]]
-                
-                #println(c.link, newedges[i])
-                lidx1 = findin(c.link, newedges[i])
-                lidx2 = findin(c.nodemap, newedges[i + 1])
-                dist = getindex(c.distances[lidx1 + 1,lidx2])
-                #println("idx = ",lidx1 + 1,lidx2, dist)
-                cA[i,i+1] .= dist
-                cA[i+1,i] .= dist
+        end
+        println(cA)
+        for i in 1:count
+            idx = findin(newcomp,i)
+            if length(idx) > 1
+                c = C[i]
+                println("component:",i)
+                println(idx, newedges[idx])
+                lidx1 = findin(c.link, newedges[idx])
+                lidx2 = findin(c.nodemap, newedges[idx])
+                lidx1 += 1
+                println(lidx1, lidx2)
+                dist = c.distances[lidx2,lidx1]
+                println(dist)
+                cA[idx,idx] = dist
+            end
+            println(cA)
+        end
+
+        for i in 1:n
+            if cA[i,i] != 0.0
+                cA[i,i] = 0.0
             end
         end
+        dropzeros!(cA)
+        
         if !isTree(cA)
             logw(w,"WARNING: contracted graph should be a tree! ");
         end
@@ -345,18 +358,18 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         for i in 1:n
             x = newcomp[i]
             if sum(dist2[x,:]) != 0.0
-                tmp , p =  shortestPaths(cA, i, newcomp, cVertices, count)
+                tmp , path =  shortestPaths(cA, i, newcomp, newedges, count)
                 #shortestPaths(cA, i, newcomp, count)
-                println(p)
                 for j in 1:count
                     dist2[x,j] = dist2[x,j] < tmp[j] ? dist2[x,j] : tmp[j] 
                 end
             else
-                dist2[x,:], p = shortestPaths(cA, i, newcomp, cVertices, count)
+                dist2[x,:], path = shortestPaths(cA, i, newcomp, newedges, count)
+                
                 #shortestPaths(cA, i, newcomp, count)
             end
             #println("dist2",dist2)
-            #println("p",p)
+            #println("path",path)
         end
         println("cVertices:")
         for i in 1:count
@@ -377,26 +390,33 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println(sizes)
         distcomp = zeros(Float64,count)
         rx :: Int64 = 0
+        exit()
         for i in 1:count
             # for i I need Component structure (C[])
             println("- C[$i] cf-distances=",C[i].distances)
-            for j in 1:count
-                # for j I need cVertex structure (cVertices[])
+            for (j,p) in enumerate(C[i].path)
                 if j == i continue; end
-                if cVertices[i].cmplist[j] == 0
-                    rx = getindex(cVertices[j].rx[1])
-                else
-                    idx = findin(cVertices[j].x, cVertices[i].cmplist[j])
-                    rx = getindex(cVertices[j].rx[idx])
-                    #rx = cVertices[i].cmplist[j]
-                end
-                idx = findin(C[j].link, rx)
-                #println("rx and idx", rx, idx+1)
-                #println(C[j].distances[:,idx+1], sum(C[j].distances[:,idx+1]))
-                 #distcomp[i] += sum(C[j].distances[:,idx+1])
-                 distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
-             end
+                idx = findin(C[j].link,p)
+                distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
+            end
         end
+        # for j in 1:count
+        #     # for j I need cVertex structure (cVertices[])
+        #     if j == i continue; end
+        #     if cVertices[i].cmplist[j] == 0
+        #         rx = getindex(cVertices[j].rx[1])
+        #     else
+        #         idx = findin(cVertices[j].x, cVertices[i].cmplist[j])
+        #         rx = getindex(cVertices[j].rx[idx])
+        #         #rx = cVertices[i].cmplist[j]
+        #     end
+        #     idx = findin(C[j].link, rx)
+        #     #println("rx and idx", rx, idx+1)
+        #     #println(C[j].distances[:,idx+1], sum(C[j].distances[:,idx+1]))
+        #     #distcomp[i] += sum(C[j].distances[:,idx+1])
+        #     distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
+        # end
+    #####end
         println("distcomp:")
         println(distcomp)
         #sizes -= 1
