@@ -321,6 +321,14 @@ function TestGraph(n:: Int, m:: Int)
     push!(nbr[17], 16)
     push!(nbr[17], 18)
     push!(nbr[18], 17)
+    ######
+    push!(nbr[14], 19)
+    push!(nbr[14], 20)
+    push!(nbr[19], 20)
+    push!(nbr[19], 14)
+    push!(nbr[20], 19)
+    push!(nbr[20], 14)
+    
     return Graph(n,m,nbr)
 end
 

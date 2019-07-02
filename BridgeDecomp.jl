@@ -85,6 +85,7 @@ end
 function exact(G, w :: IOStream)
     logw(w,"****** Running (my) exact ******")
     distances = erINV(G,1)
+    println("Exact distance:",distances)
     cf = calculateNodeDists(distances, G.n)
     println("Exact distance:",cf)
     cf = calculateCF(cf, G.n)
@@ -183,15 +184,11 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
     B, core1nodes = bridges(LightGraphs.Graph(A))
-    #println((100*B.m)/(nnz(A)/2), "% edges are bridges (type core2).")
-    #println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges (type core1).")
-    println((100*length(B.edges))/A.n, "% nodes are core 2++.")
-    println(100*length(core1nodes)/(A.n), "% nodes are core1.")
+    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
+    println(100*length(B.edges)/A.n, "% nodes are core2.")
+    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
+    println( 100*length(core1nodes)/(A.n), "% nodes are core1.")
     println("finding bridges time: ", time() - start_time, "(s)")
-    #println("core1nodes",core1nodes)
-    #println("Bridges:")
-    #printBridges(B)
-    #println("- list of core1nodes=", core1nodes)
     t = time()
     A  = removeBridges(A, B, core1nodes)
     println("remove bridges time: ", time()- t, "(s)")
@@ -206,7 +203,6 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     C = Array{Component,1}(ncmps)
     maxc = 0;
     #### Is : for i = eachindex(a) faster than for i = 1:n?
-
     for i in eachindex(cmps) #1:ncmps
         bdry = collect(intersect(DataStructures.SortedSet(B.core2nodes), Set(map[i])))
         # TODO: check if link has to be ordered or not!!!!
@@ -270,10 +266,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     n = A.n
     B = Bridges 
     A, B = extractBridges(A)
-    # for (i,e) in enumerate(B.edges)
-    #     B.core3nodes[2*i - 1] = e.src
-    #     B.core3nodes[2*i] = e.dst
-    # end
     t = time()
     C = Array{Component,1}
     C = buildComponents(A, B)
@@ -281,12 +273,10 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     println("creating components time: ", time()- t, "(s)")
 
     t = time()
-    
     for (idx, c) in enumerate(C)
         print("Approxing component $idx ...")
         c.distances = localApprox(c, w)
         println(" done")
-        #cf = exact(sparsemat2Graph(c.A), w )
     end
     println("Bridges:")
     printBridges(B)
@@ -295,27 +285,19 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         print("$idx")
         printComponent(c)
     end
-
     println(" solving core1 time : ", time()- t, "(s)")
     if count == 1
         c = C[1]
         c.distances = sum(c.distances,2)
         cf = calculateCF(c.distances, n, c.nc)
-        #println("Final", cf)
         logw(w,"\t node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
     else
-        # this is not correct yet, need to also remove the info for nodes
-        # connected with core1nodes
-        println("length = ",length(B.edges))
         println("components:", B.comp)
         println("edges:", B.edges)
-        # totalnodes = 0
-        # for i in C
-        #     totalnodes += C[i].nc
-        # end
         finaldist = []
         finalcomp = []
         finalnodes = []
+        ## strip core1nodes in order to remove internal paths
         newcomp, newedges = stripcore1nodes(B.comp,B.edges)
         println(newcomp)
         println(newedges)
@@ -332,11 +314,11 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             push!(rnodes[newcomp[i]], e)
             push!(nodes[newcomp[i]], i)
         end
-        println("cVertices:")
+
         for i in 1:count
             cVertices[i] = cVertex(i,nodes[i],rnodes[i],count)
-            printcVertex(cVertices[i])
         end
+
         cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
         for i in 1:n-1
             if newcomp[i] != newcomp[i + 1]
@@ -348,7 +330,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
                 #println(c.link, newedges[i])
                 lidx1 = findin(c.link, newedges[i])
                 lidx2 = findin(c.nodemap, newedges[i + 1])
-                #### TODO: restore values!!!
                 dist = getindex(c.distances[lidx1 + 1,lidx2])
                 #println("idx = ",lidx1 + 1,lidx2, dist)
                 cA[i,i+1] .= dist
@@ -358,9 +339,8 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         if !isTree(cA)
             logw(w,"WARNING: contracted graph should be a tree! ");
         end
-        #println(cA)
+        println(cA)
         println("number of components:", n)
-        
         dist2 = zeros(Float64,count,count) # or count
         for i in 1:n
             x = newcomp[i]
@@ -378,7 +358,12 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             #println("dist2",dist2)
             #println("p",p)
         end
-        println("Dist between components:")
+        println("cVertices:")
+        for i in 1:count
+            printcVertex(cVertices[i])
+        end
+        
+        println("Dist2 between components:")
         println(dist2)
         sizes = zeros(Int64,count)
         for i in 1:count
@@ -482,19 +467,21 @@ logw(w, "-------------------------------------------------------- ")
 #m = 20
 #Line = Components3Graph(n,m)
 
-Line = TestGraph(18, 48)
+Line = TestGraph(20, 54)
+#Line = TestGraph(18, 48)
 #Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time approx(A,L,w)
-Line = TestGraph(18, 48)
+#Line = TestGraph(18, 48)
+Line = TestGraph(20, 54)
 #Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time cfcAccelerate(A,w)
 @time exact(Line,w)
-exit()
 
+exit()
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -507,9 +494,8 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-
-    A, L = sparseAdja(G)
-    @time approx(A,L,w)
+#   A, L = sparseAdja(G)
+#   @time approx(A,L,w)
 #    @time exact(G,w)
 end
 
