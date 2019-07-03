@@ -272,7 +272,7 @@ function shortestPaths(mat::SparseMatrixCSC{Tv,Ti}, start::Ti, comp:: Array{Int6
     while nh.nitems > 0
         v::Ti = intHeapPop!(nh)
         x = comp[v]
-        println("vertex $v ... (comp $x)")
+ #       println("vertex $v ... (comp $x)")
         visited[v] = true
         if path[x] == 0
             path[x] = nodes[v]
@@ -283,7 +283,7 @@ function shortestPaths(mat::SparseMatrixCSC{Tv,Ti}, start::Ti, comp:: Array{Int6
         for ind in mat.colptr[v]:(mat.colptr[v+1]-1)
             nbr = mat.rowval[ind]
             y = comp[nbr]
-           println("neighbor = $nbr (comp $y)")
+ #          println("neighbor = $nbr (comp $y)")
             if !visited[nbr]
                 #newdist = dv + 1/mat.nzval[ind]
                 newdist = dv + mat.nzval[ind]

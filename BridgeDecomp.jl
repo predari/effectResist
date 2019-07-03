@@ -341,7 +341,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             end
             println(cA)
         end
-
         for i in 1:n
             if cA[i,i] != 0.0
                 cA[i,i] = 0.0
@@ -355,6 +354,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println(cA)
         println("number of components:", n)
         dist2 = zeros(Float64,count,count) # or count
+        path2 = zeros(Int64,count,count)
         for i in 1:n
             x = newcomp[i]
             if sum(dist2[x,:]) != 0.0
@@ -369,13 +369,17 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
                 #shortestPaths(cA, i, newcomp, count)
             end
             #println("dist2",dist2)
-            #println("path",path)
+            println("path",path, "for comp=", x)
+            if path2[x,1] == 0
+                path2[x,:] = path
+            end
         end
-        println("cVertices:")
-        for i in 1:count
-            printcVertex(cVertices[i])
-        end
+        println("path2:", path2)
         
+        # println("cVertices:")
+        # for i in 1:count
+        #     printcVertex(cVertices[i])
+        # end
         println("Dist2 between components:")
         println(dist2)
         sizes = zeros(Int64,count)
@@ -390,13 +394,14 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println(sizes)
         distcomp = zeros(Float64,count)
         rx :: Int64 = 0
-        exit()
         for i in 1:count
             # for i I need Component structure (C[])
             println("- C[$i] cf-distances=",C[i].distances)
-            for (j,p) in enumerate(C[i].path)
+            #for (j,p) in enumerate(C[i].path)
+            for (j,p) in enumerate(path2[i,:])
                 if j == i continue; end
                 idx = findin(C[j].link,p)
+                println(j," ",p," ",idx)
                 distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
             end
         end
