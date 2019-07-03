@@ -85,7 +85,7 @@ end
 function exact(G, w :: IOStream)
     logw(w,"****** Running (my) exact ******")
     distances = erINV(G,1)
-    println("Exact distance:",distances)
+    #println("Exact distance:",distances)
     cf = calculateNodeDists(distances, G.n)
     println("Exact distance:",cf)
     cf = calculateCF(cf, G.n)
@@ -239,25 +239,244 @@ function stripcore1nodes(comp  :: Array{Int64,1} , core3nodes :: Array{Int64,1})
     deleteat!(core3nodes,pst)
     return comp, core3nodes
 end
-function createTreeGraph(n  :: Int64)
-        # the construction of this graph is buggy!
-        ### TODO: think about what kind of graph (chinese type, sparsematrixCSC, lightgraph etc)
-        ### graph type you need!!
-        nbr = Array{Array{Int, 1}}(n)
-        for i in indices(nbr,1) nbr[i] = [] end
-        wgt = Array{Array{Int, 1}}(n)
-        for i in indices(wgt,1) wgt[i] = [] end
-        for i in 1:n-1
-            push!(nbr[i], i + 1)
-            push!(nbr[i + 1],i)
-            # if ncomp[i] != ncomp[i + 1]
-            #     wgt[] = something
-            # else
-            #     wgt[] = 1
-            # end
+
+
+function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C :: Array{Component,1}, nc :: Int64)
+    n = length(cmplist)
+    cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+    for i in 1:2:length(edges)
+        cA[i,i+1] .= 1.0
+        cA[i+1,i] .= 1.0
+    end
+    #println(cA)
+    #nc = length(C)
+    for i in 1: nc
+        idx = findin(cmplist,i)
+        if length(idx) > 1
+            c = C[i]
+            #println("component:",i)
+            #println(idx, edges[idx])
+            lidx1 = findin(c.link, edges[idx])
+            lidx2 = findin(c.nodemap, edges[idx])
+            lidx1 += 1
+            #println(lidx1, lidx2)
+            dist = c.distances[lidx2,lidx1]
+            #println(dist)
+            cA[idx,idx] = dist
         end
-    return Graph(n,n-1,nbr)
+        #println(cA)
+    end
+    for i in 1:n
+        if cA[i,i] != 0.0
+            cA[i,i] = 0.0
+        end
+    end
+    dropzeros!(cA)
+    if !isTree(cA)
+        logw(w,"WARNING: contracted graph should be a tree! ");
+    end
+    return cA
 end
+
+function shortestContractPaths(cA :: SparseMatrixCSC{Float64}, nc :: Int64, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+    n = length(cmplist)
+    dist2 = zeros(Float64,nc,nc)
+    path2 = zeros(Int64,nc,nc)
+    for i in 1:n
+        x = cmplist[i]
+        if sum(dist2[x,:]) != 0.0
+            tmp , path =  shortestPaths(cA, i, cmplist, edges, nc)
+            for j in 1:nc
+                dist2[x,j] = dist2[x,j] < tmp[j] ? dist2[x,j] : tmp[j] 
+            end
+        else
+            dist2[x,:], path = shortestPaths(cA, i, cmplist, edges, nc)
+        end
+        if path2[x,1] == 0
+            path2[x,:] = path
+        end
+    end
+    return dist2, path2
+end
+
+function compRealSizes(C :: Array{Component,1}, nc :: Int64)
+    sizes = zeros(Int64,nc)
+    for i in 1:nc
+        externalNodes = 0
+        for j in C[i].external
+            externalNodes += j 
+        end
+        sizes[i] = C[i].nc + externalNodes
+    end
+    return sizes
+end
+function compContractLocalDists(C :: Array{Component,1}, nc :: Int64, path2 :: Array{Int64,2}, dist2 :: Array{Float64,2}, sizes :: Array{Int64,1})
+    distcomp = zeros(Float64,nc)
+   
+    for i in 1:nc
+        println("- C[$i] cf-distances=",C[i].distances)
+        # # TODO: for (j,p) in enumerate(C[i].path)
+        # for (j,p) in enumerate(path2[i,:])
+        #     if j == i continue; end
+        #     idx = findin(C[j].link, p)
+        #     println("In comp=$j node-->$idx sum:", sum(C[j].distances[:,idx+1]))
+        #     distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
+        # end
+        println(dist2)
+        for (j,p) in enumerate(path2[i,:])
+            if j == i continue; end
+            println(sizes[j],"*",dist2[i,j])
+            distcomp[i] += sizes[j]*dist2[i,j]
+        end
+        println("distcomp after size:", distcomp)
+        for (j,p) in enumerate(path2[i,:])
+            if j == i continue; end
+            idx = findin(C[j].link, p)
+            println("In comp=$j node-->$p sum:", sum(C[j].distances[:,idx+1]))
+            distcomp[i] += sum(C[j].distances[:,idx+1])
+        end
+        println("distcomp after sum:", distcomp)
+    end
+    return distcomp
+end
+function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+    println("Update local Dists")
+    println(sizes)
+    println(cmplist)
+    for i in 1:2:length(edges)
+        print("(",edges[i],",",edges[i+1],") \n")
+        for (idx, c) in enumerate(cmplist[i:i+1])
+            println(idx," ", c," ", C[c].link)
+            for i in 1:length(C[c].link)                   
+                #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
+                println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
+                
+                C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[c])
+                println("AFTER (mult with ",sizes[c],"):", C[c].distances[:,i+1])
+            end
+        end
+    end
+end
+
+### same as above!
+function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1})
+    for i in 1:nc
+        sizes[i] = sum(sizes) - sizes[i]
+    end
+    println(sizes)
+    for c in C
+        for i in 2:length(c.distances)
+            c.distances[:,i] += (c.distances[:,i] * sizes[i])
+        end
+    end
+end
+
+
+##### TODO: make sure if correct or not!!
+## actually d(link,node1) has already been taken into account so no need to include node1 type
+## of nodes into the size of the component
+function updateLocalDists(C :: Array{Component,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+    println("Update local Dists")
+    println(cmplist)
+    for i in 1:2:length(edges)
+        print("(",edges[i],",",edges[i+1],") \n")
+        for (idx, c) in enumerate(cmplist[i:i+1])
+            println(idx," ", c," ", C[c].link)
+            for i in 1:length(C[c].link)                   
+                #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
+                println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
+                
+                C[c].distances[:,i+1] += (C[c].distances[:,i+1] * C[c].nc)
+                println("AFTER (mult with ",C[c].nc,"):", C[c].distances[:,i+1])
+            end
+        end
+    end
+end
+
+### same as above!
+function updateLocalDists(C :: Array{Component,1}, nc :: Int64)
+    sizes = zeros(Int64,nc)
+    for i in 1:nc
+        for j in 1:nc
+            if j == i continue; end
+            sizes[i] += C[j].nc
+        end
+    end
+    println(sizes)
+    for c in C
+        for i in 2:length(c.distances)
+            c.distances[:,i] += (c.distances[:,i] * sizes[i])
+        end
+    end
+end
+
+# function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+#     for i in 1:2:length(edges)
+#         print("(",edges[i],",",edges[i+1],") \n")
+#         for (idx, c) in enumerate(cmplist[i:i+1])
+#             #println(idx," ", c," ", C[c].link)
+#             for i in 1:length(C[c].link)                   
+#                 #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
+#                 println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
+#                 C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[ cmplist[Int(2/idx)]])
+#                 println("AFTER (mult with ",sizes[ cmplist[Int(2/idx)]],"):", C[c].distances[:,i+1])
+#             end
+#         end
+#     end
+# end
+
+
+function aggregateLocalDists(C :: Array{Component,1}, distcomp :: Array{Float64,1})
+    fdistance = []
+    fnodes = []
+    for (idx, c) in enumerate(C)
+        c.distances = sum(c.distances,2) + distcomp[idx]
+        println("distances:")
+        println(c.distances)
+        fdistance = [fdistance ; c.distances]
+        fnodes = [fnodes ; c.nodemap]
+    end
+    return fdistance, fnodes
+end
+
+function aggregateDistances(C :: Array{Component,1}, nc :: Int64, path2 :: Array{Int64,2}, dist2 :: Array{Float64,2}, sizes :: Array{Int64,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+    distcomp = zeros(Float64,nc)
+    fdistance = []
+    fnodes = []
+    for i in 1:nc
+        #println("- C[$i] cf-distances=",C[i].distances)
+        # TODO: for (j,p) in enumerate(C[i].path)
+        for (j,p) in enumerate(path2[i,:])
+            if j == i continue; end
+            idx = findin(C[j].link, p)
+            #println(j," ",p," ",idx)
+            distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
+        end
+    end
+    println("distcomp:")
+    println(distcomp)
+    #println(B.edges," ",length(B.edges)," ",B.comp)
+    #sizes -= 1
+    for i in 1:2:length(edges)
+        #print("(",B.edges[i],",",B.edges[i+1],") \n")
+        for (idx, c) in enumerate(cmplist[i:i+1])
+            #println(idx," ", c," ", C[c].link)
+            for i in 1:length(C[c].link)                   
+                #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
+                C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[ cmplist[Int(2/idx)]])
+            end
+        end
+    end
+    for (idx, c) in enumerate(C)
+        c.distances = sum(c.distances,2) + distcomp[idx]
+        println("distances:")
+        println(c.distances)
+        fdistance = [fdistance ; c.distances]
+        fnodes = [fnodes ; c.nodemap]
+    end
+    return fdistance, fnodes
+end
+
 
 
 
@@ -271,7 +490,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     C = buildComponents(A, B)
     count = length(C)
     println("creating components time: ", time()- t, "(s)")
-
     t = time()
     for (idx, c) in enumerate(C)
         print("Approxing component $idx ...")
@@ -294,191 +512,39 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     else
         println("components:", B.comp)
         println("edges:", B.edges)
-        finaldist = []
-        finalcomp = []
-        finalnodes = []
         ## strip core1nodes in order to remove internal paths
         newcomp, newedges = stripcore1nodes(B.comp,B.edges)
-        println(newcomp)
-        println(newedges)
-        n = length(newcomp)
-        # cG = createTreeGraph(n)
-        # println(cG)
-        # cA, cL = sparseAdja(cG)
-        cVertices = Array{cVertex}(count)
-        nodes = Array{Array{Int, 1}}(count)
-        rnodes = Array{Array{Int, 1}}(count)
-        for i in indices(nodes,1) nodes[i] = [] end
-        for i in indices(rnodes,1) rnodes[i] = [] end
-        for (i,e) in enumerate(newedges)
-            push!(rnodes[newcomp[i]], e)
-            push!(nodes[newcomp[i]], i)
-        end
-
-        for i in 1:count
-            cVertices[i] = cVertex(i,nodes[i],rnodes[i],count)
-        end
-
+        println("After striping nodes1!")
+        println("components:", newcomp)
+        println("edges:", newedges)
+        n :: Int64 = length(newcomp)
+        # following line: improves perf? TODO: check
         cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
-        for i in 1:2:length(newedges)
-                cA[i,i+1] .= 1.0
-                cA[i+1,i] .= 1.0
-        end
+        cA = contractAdjGraph(newedges, newcomp, C, count)
         println(cA)
-        for i in 1:count
-            idx = findin(newcomp,i)
-            if length(idx) > 1
-                c = C[i]
-                println("component:",i)
-                println(idx, newedges[idx])
-                lidx1 = findin(c.link, newedges[idx])
-                lidx2 = findin(c.nodemap, newedges[idx])
-                lidx1 += 1
-                println(lidx1, lidx2)
-                dist = c.distances[lidx2,lidx1]
-                println(dist)
-                cA[idx,idx] = dist
-            end
-            println(cA)
-        end
-        for i in 1:n
-            if cA[i,i] != 0.0
-                cA[i,i] = 0.0
-            end
-        end
-        dropzeros!(cA)
-        
-        if !isTree(cA)
-            logw(w,"WARNING: contracted graph should be a tree! ");
-        end
-        println(cA)
-        println("number of components:", n)
-        dist2 = zeros(Float64,count,count) # or count
+        # following 2 lines: improves perf? TODO: check
+        dist2 = zeros(Float64,count,count)
         path2 = zeros(Int64,count,count)
-        for i in 1:n
-            x = newcomp[i]
-            if sum(dist2[x,:]) != 0.0
-                tmp , path =  shortestPaths(cA, i, newcomp, newedges, count)
-                #shortestPaths(cA, i, newcomp, count)
-                for j in 1:count
-                    dist2[x,j] = dist2[x,j] < tmp[j] ? dist2[x,j] : tmp[j] 
-                end
-            else
-                dist2[x,:], path = shortestPaths(cA, i, newcomp, newedges, count)
-                
-                #shortestPaths(cA, i, newcomp, count)
-            end
-            #println("dist2",dist2)
-            println("path",path, "for comp=", x)
-            if path2[x,1] == 0
-                path2[x,:] = path
-            end
-        end
-        println("path2:", path2)
-        
-        # println("cVertices:")
-        # for i in 1:count
-        #     printcVertex(cVertices[i])
-        # end
-        println("Dist2 between components:")
-        println(dist2)
+        dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
+        println("path2:", path2)        
+        println("dist2:", dist2)
         sizes = zeros(Int64,count)
-        for i in 1:count
-            te = 0
-            for j in C[i].external
-                te += j 
-            end
-            sizes[i] = C[i].nc + te
-        end
-        println("Sizes:")
-        println(sizes)
+        sizes = compRealSizes(C, count)
+        println("Sizes:", sizes)
         distcomp = zeros(Float64,count)
-        rx :: Int64 = 0
-        for i in 1:count
-            # for i I need Component structure (C[])
-            println("- C[$i] cf-distances=",C[i].distances)
-            #for (j,p) in enumerate(C[i].path)
-            for (j,p) in enumerate(path2[i,:])
-                if j == i continue; end
-                idx = findin(C[j].link,p)
-                println(j," ",p," ",idx)
-                distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
-            end
-        end
-        # for j in 1:count
-        #     # for j I need cVertex structure (cVertices[])
-        #     if j == i continue; end
-        #     if cVertices[i].cmplist[j] == 0
-        #         rx = getindex(cVertices[j].rx[1])
-        #     else
-        #         idx = findin(cVertices[j].x, cVertices[i].cmplist[j])
-        #         rx = getindex(cVertices[j].rx[idx])
-        #         #rx = cVertices[i].cmplist[j]
-        #     end
-        #     idx = findin(C[j].link, rx)
-        #     #println("rx and idx", rx, idx+1)
-        #     #println(C[j].distances[:,idx+1], sum(C[j].distances[:,idx+1]))
-        #     #distcomp[i] += sum(C[j].distances[:,idx+1])
-        #     distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
-        # end
-    #####end
-        println("distcomp:")
-        println(distcomp)
-        #sizes -= 1
-        for i in 1:2:length(B.edges)
-            print("(",B.edges[i],",",B.edges[i+1],") \n")
-            for (idx, c) in enumerate(B.comp[i:i+1])
-                println(idx, c, C[c].link)
-                for i in 1:length(C[c].link)
-                    
-                    println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
-                    C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[B.comp[Int(2/idx)]])
-                end
-            end
-        end
-        for (idx, c) in enumerate(C)
-            c.distances = sum(c.distances,2) + distcomp[idx]
-            println("distances:")
-            println(c.distances)
-            finaldist = [finaldist ; c.distances]
-            finalnodes = [finalnodes ; c.nodemap]
-            finalcomp = [finalcomp ; idx*ones(Int64,length(c.distances))]
-           
-        end
-        # for (idx, c) in enumerate(C)
-        #     if length(c.link) == 2
-        #         for i in 1:length(c.link)
-        #             ## add it one more time
-        #             if i == 1
-        #                 c.distances[:,i+1] += (c.distances[:,i+1] * sizes[1])
-        #             else
-        #                 c.distances[:,i+1] += (c.distances[:,i+1] * sizes[3])
-        #             end
-        #         end
-        #     elseif length(c.link) == 1
-        #         ## add it two more times (this is hardcoded, I have to find how many times)
-        #         if idx == 1
-        #             c.distances[:,2] += (c.distances[:,2] * (sizes[2]))
-        #         elseif idx == 2
-        #             c.distances[:,2] += (c.distances[:,2] * (sizes[1]))
-        #         end
-        #     end
-        #     c.distances = sum(c.distances,2) + distcomp[idx]
-        #     println("distances:")
-        #     println(c.distances)
-        #     finaldist = [finaldist ; c.distances]
-        #     finalnodes = [finalnodes ; c.nodemap]
-        #     finalcomp = [finalcomp ; idx*ones(Int64,length(c.distances))]
-            
-        # end
+        distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
+        println("Final distcomp:", distcomp)
+        #updateLocalDists(C, sizes, newedges, newcomp)
+        updateLocalDists(C, newedges, newcomp)
+        ## same as above
+        ## updateLocalDists(C, count)
+        fdistance, fnodes = aggregateLocalDists(C, distcomp)
+        #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
 end
-println(finaldist)
-println(finalcomp)
-println(finalnodes)
-cf = calculateCF(finaldist, A.n,length(finaldist))
-println(finalcomp[indmax(cf)],finalnodes[indmax(cf)])
-#logw(w,"\t node with argmax{c(", C[finalcomp[indmax(cf)]].nodemap[finalnodes[indmax(cf)]], ")} = ", maximum(cf))
-logw(w,"\t node with argmax{c(", finalnodes[indmax(cf)], ")} = ", maximum(cf))
+println(fdistance)
+println(fnodes)
+cf = calculateCF(fdistance, A.n,length(fdistance))
+logw(w,"\t node with argmax{c(", fnodes[indmax(cf)], ")} = ", maximum(cf))
     println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
 end
 
@@ -492,14 +558,16 @@ logw(w, "-------------------------------------------------------- ")
 #m = 20
 #Line = Components3Graph(n,m)
 
-Line = TestGraph(20, 54)
-#Line = TestGraph(18, 48)
+#Line = TestGraph(20, 54)
+Line = TestGraph(18, 48)
+#Line = Components3Graph(8, 22)
 #Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
 @time approx(A,L,w)
-#Line = TestGraph(18, 48)
-Line = TestGraph(20, 54)
+#Line = Components3Graph(8, 22)
+Line = TestGraph(18, 48)
+#Line = TestGraph(20, 54)
 #Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)

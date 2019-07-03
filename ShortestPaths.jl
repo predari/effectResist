@@ -228,28 +228,6 @@ function shortestPaths(mat::SparseMatrixCSC{Tv,Ti}, start::Ti, comp:: Array{Int6
 end # shortestPaths
 
 
-mutable struct cVertex
-    id::Int64
-    x::Array{Int64}
-    rx::Array{Int64}
-    multiplier::Array{Int64} # size of length(x)
-    cmplist:: Array{Int64}
-end 
-
-cVertex(i::Int64,x::Array{Int64},rx::Array{Int64},n::Int64) = cVertex(i,x,rx,zeros(Int64,length(x)),zeros(Int64,n))
-cVertex(i::Int64,n::Int64) = cVertex(i,[],[],zeros(Int64,1),zeros(Int64,n))
-
-function printcVertex(cV :: cVertex)
-    println("- cV.i=",cV.id)
-    print("- list of x: ")
-    println(cV.x)
-    print("- list of rx: ")
-    println(cV.rx)
-    println("- multipliers: ")
-    println(cV.multiplier)
-    println("- cmplist: ")
-    println(cV.cmplist)
-end
 
 # nodes -> newedges
 function shortestPaths(mat::SparseMatrixCSC{Tv,Ti}, start::Ti, comp:: Array{Int64,1}, nodes:: Array{Int64,1}, nc :: Int64) where {Tv,Ti}
@@ -293,16 +271,12 @@ function shortestPaths(mat::SparseMatrixCSC{Tv,Ti}, start::Ti, comp:: Array{Int6
                         distances[y] = newdist
                     end
                     visitedcomp[y] = true
-                    #println("visitedcomp = ", visitedcomp)
-                    #println(visited)
-                    #println(dists)
                     pArray[nbr] = v
                 end # if
             end # if
         end # for
         
     end # while
-    println(path)
     return distances, path
 
 end # shortestPaths
