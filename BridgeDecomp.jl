@@ -315,115 +315,82 @@ function compContractLocalDists(C :: Array{Component,1}, nc :: Int64, path2 :: A
    
     for i in 1:nc
         println("- C[$i] cf-distances=",C[i].distances)
-        # # TODO: for (j,p) in enumerate(C[i].path)
-        # for (j,p) in enumerate(path2[i,:])
-        #     if j == i continue; end
-        #     idx = findin(C[j].link, p)
-        #     println("In comp=$j node-->$idx sum:", sum(C[j].distances[:,idx+1]))
-        #     distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
-        # end
-        println(dist2)
-        for (j,p) in enumerate(path2[i,:])
-            if j == i continue; end
-            println(sizes[j],"*",dist2[i,j])
-            distcomp[i] += sizes[j]*dist2[i,j]
-        end
-        println("distcomp after size:", distcomp)
+        # TODO: for (j,p) in enumerate(C[i].path)
         for (j,p) in enumerate(path2[i,:])
             if j == i continue; end
             idx = findin(C[j].link, p)
-            println("In comp=$j node-->$p sum:", sum(C[j].distances[:,idx+1]))
-            distcomp[i] += sum(C[j].distances[:,idx+1])
+            println("In comp=$j node-->$idx sum:", sum(C[j].distances[:,idx+1]))
+            distcomp[i] += sizes[j]*dist2[i,j] + sum(C[j].distances[:,idx+1])
         end
-        println("distcomp after sum:", distcomp)
+        #### following code for debug purposes
+        # println(dist2)
+        # for (j,p) in enumerate(path2[i,:])
+        #     if j == i continue; end
+        #     println(sizes[j],"*",dist2[i,j])
+        #     distcomp[i] += sizes[j]*dist2[i,j]
+        # end
+        # println("distcomp after size:", distcomp)
+        # for (j,p) in enumerate(path2[i,:])
+        #     if j == i continue; end
+        #     idx = findin(C[j].link, p)
+        #     println("In comp=$j node-->$p sum:", sum(C[j].distances[:,idx+1]))
+        #     distcomp[i] += sum(C[j].distances[:,idx+1])
+        # end
+        # println("distcomp after sum:", distcomp)
     end
     return distcomp
 end
-function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
-    println("Update local Dists")
-    println(sizes)
-    println(cmplist)
-    for i in 1:2:length(edges)
-        print("(",edges[i],",",edges[i+1],") \n")
-        for (idx, c) in enumerate(cmplist[i:i+1])
-            println(idx," ", c," ", C[c].link)
-            for i in 1:length(C[c].link)                   
-                #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
-                println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
-                
-                C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[c])
-                println("AFTER (mult with ",sizes[c],"):", C[c].distances[:,i+1])
-            end
-        end
-    end
-end
-
-### same as above!
-function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1})
-    for i in 1:nc
-        sizes[i] = sum(sizes) - sizes[i]
-    end
-    println(sizes)
-    for c in C
-        for i in 2:length(c.distances)
-            c.distances[:,i] += (c.distances[:,i] * sizes[i])
-        end
-    end
-end
-
-
-##### TODO: make sure if correct or not!!
-## actually d(link,node1) has already been taken into account so no need to include node1 type
-## of nodes into the size of the component
-function updateLocalDists(C :: Array{Component,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
-    println("Update local Dists")
-    println(cmplist)
-    for i in 1:2:length(edges)
-        print("(",edges[i],",",edges[i+1],") \n")
-        for (idx, c) in enumerate(cmplist[i:i+1])
-            println(idx," ", c," ", C[c].link)
-            for i in 1:length(C[c].link)                   
-                #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
-                println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
-                
-                C[c].distances[:,i+1] += (C[c].distances[:,i+1] * C[c].nc)
-                println("AFTER (mult with ",C[c].nc,"):", C[c].distances[:,i+1])
-            end
-        end
-    end
-end
-
-### same as above!
-function updateLocalDists(C :: Array{Component,1}, nc :: Int64)
-    sizes = zeros(Int64,nc)
-    for i in 1:nc
-        for j in 1:nc
-            if j == i continue; end
-            sizes[i] += C[j].nc
-        end
-    end
-    println(sizes)
-    for c in C
-        for i in 2:length(c.distances)
-            c.distances[:,i] += (c.distances[:,i] * sizes[i])
-        end
-    end
-end
-
 # function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+#     println("Update local Dists")
+#     s :: Int64 = sum(sizes)
+#     println(sizes)
+#     println(cmplist)
 #     for i in 1:2:length(edges)
 #         print("(",edges[i],",",edges[i+1],") \n")
 #         for (idx, c) in enumerate(cmplist[i:i+1])
-#             #println(idx," ", c," ", C[c].link)
-#             for i in 1:length(C[c].link)                   
-#                 #println(B.comp[Int(2/idx)], ": ", sizes[B.comp[Int(2/idx)]])
-#                 println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
-#                 C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[ cmplist[Int(2/idx)]])
-#                 println("AFTER (mult with ",sizes[ cmplist[Int(2/idx)]],"):", C[c].distances[:,i+1])
-#             end
+#             println(idx," ", c," ", C[c].link)
+#             if length(C[c].link) == 1
+#                 println("In comp=$c link with idx=1, BEFORE :", C[c].distances[:,2])
+#                 C[c].distances[:,2] += (C[c].distances[:,2] * (s - sizes[c]))
+#                 println("AFTER (mult with ",(s - sizes[c]),"):", C[c].distances[:,2])
+#             else
+#                 for i in 1:length(C[c].link)                   
+#                     println(cmplist[Int(2/idx)], ": ", sizes[cmplist[Int(2/idx)]])
+#                     println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
+#                     C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[cmplist[Int(2/idx)]])
+#                     println("AFTER (mult with ", sizes[cmplist[Int(2/idx)]],"):", C[c].distances[:,i+1])
+#                 end
+#             end           
 #         end
 #     end
 # end
+
+function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1},  edges :: Array{Int64,1}, cmplist :: Array{Int64,1})  
+    s :: Int64 = sum(sizes)
+    l :: Int64 = length(cmplist)
+    for (idx, c) in enumerate(C)
+        if size(c.distances,2) < 2
+            println("Warning: # of columns for distances should be at least 2")
+        end
+        if size(c.distances,2) == 2
+            println("In comp=$idx link with idx=2, (mult with ", s - sizes[idx], ")")
+            c.distances[:,2] += (c.distances[:,2] * (s - sizes[idx]))
+        else
+            for i in 2:size(c.distances,2)
+                node = c.link[i-1]
+                x = getindex(findin(edges,node))
+                if rem.((l-x),2) == 1
+                    y = x + 1
+                else # (==0)
+                    y = x - 1
+                end
+                yi:: Int64 = cmplist[y]
+                println("In comp=$idx link with idx=$i, (mult with ", sizes[yi], ")")
+                c.distances[:,i] += (c.distances[:,i] * sizes[yi])
+            end
+        end
+    end
+end
 
 
 function aggregateLocalDists(C :: Array{Component,1}, distcomp :: Array{Float64,1})
@@ -534,10 +501,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         distcomp = zeros(Float64,count)
         distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
         println("Final distcomp:", distcomp)
-        #updateLocalDists(C, sizes, newedges, newcomp)
-        updateLocalDists(C, newedges, newcomp)
-        ## same as above
-        ## updateLocalDists(C, count)
+        updateLocalDists(C, sizes,newedges, newcomp)
         fdistance, fnodes = aggregateLocalDists(C, distcomp)
         #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
 end
