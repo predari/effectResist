@@ -1,3 +1,43 @@
 -------------------------------------------------------- 
 ****** Running (chinese) approx ******
-	 node with argmax{c(2)} = 0.590440487347704
+	 node with argmax{c(1)} = 0.5638985579313772
+****** Running (my) exact ******
+	 node with argmax{c(2)} = 0.6153011394465543
+---------------------ego-facebook.edges-------------------------- 
+Reading graph from edges list file ego-facebook.edges
+	 G.n: 2888	 G.m: 2981
+	 node with argmax{c(211)} = 0.7058905434334221
+****** Running (chinese) approx ******
+	 node with argmax{c(211)} = 0.7008846292055304
+---------------------out.adjnoun_adjacency_adjacency-------------------------- 
+Reading graph from edges list file out.adjnoun_adjacency_adjacency
+	 G.n: 112	 G.m: 425
+	 node with argmax{c(12)} = 3.046784107194739
+****** Running (chinese) approx ******
+	 node with argmax{c(12)} = 3.0659030833580485
+---------------------out.arenas-jazz-new-------------------------- 
+Reading graph from edges list file out.arenas-jazz-new
+	 G.n: 198	 G.m: 2742
+	 node with argmax{c(30)} = 8.900941661638477
+****** Running (chinese) approx ******
+	 node with argmax{c(30)} = 8.885970571921662
+---------------------out.maayan-vidal-------------------------- 
+Reading graph from edges list file out.maayan-vidal
+	 G.n: 2783	 G.m: 6007
+****** Running (chinese) approx ******
+	 node with argmax{c(288)} = 1.2675189320121603
+---------------------out.opsahl-powergrid-------------------------- 
+Reading graph from edges list file out.opsahl-powergrid
+	 G.n: 4941	 G.m: 6594
+****** Running (chinese) approx ******
+	 node with argmax{c(653)} = 0.28651046330351954
+---------------------out.petster-hamster-------------------------- 
+Reading graph from edges list file out.petster-hamster
+	 G.n: 2000	 G.m: 16098
+****** Running (chinese) approx ******
+	 node with argmax{c(18)} = 3.4771503393922547
+---------------------out.subelj_euroroad_euroroad-------------------------- 
+Reading graph from edges list file out.subelj_euroroad_euroroad
+	 G.n: 1039	 G.m: 1305
+****** Running (chinese) approx ******
+	 node with argmax{c(159)} = 0.24575065856315093

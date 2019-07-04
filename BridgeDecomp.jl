@@ -184,6 +184,7 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
     B, core1nodes = bridges(LightGraphs.Graph(A))
+    println(core1nodes)
     println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
     println(100*length(B.edges)/A.n, "% nodes are core2.")
     println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
@@ -340,30 +341,7 @@ function compContractLocalDists(C :: Array{Component,1}, nc :: Int64, path2 :: A
     end
     return distcomp
 end
-# function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1}, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
-#     println("Update local Dists")
-#     s :: Int64 = sum(sizes)
-#     println(sizes)
-#     println(cmplist)
-#     for i in 1:2:length(edges)
-#         print("(",edges[i],",",edges[i+1],") \n")
-#         for (idx, c) in enumerate(cmplist[i:i+1])
-#             println(idx," ", c," ", C[c].link)
-#             if length(C[c].link) == 1
-#                 println("In comp=$c link with idx=1, BEFORE :", C[c].distances[:,2])
-#                 C[c].distances[:,2] += (C[c].distances[:,2] * (s - sizes[c]))
-#                 println("AFTER (mult with ",(s - sizes[c]),"):", C[c].distances[:,2])
-#             else
-#                 for i in 1:length(C[c].link)                   
-#                     println(cmplist[Int(2/idx)], ": ", sizes[cmplist[Int(2/idx)]])
-#                     println("In comp=$c link with idx=$i, BEFORE :", C[c].distances[:,i+1])
-#                     C[c].distances[:,i+1] += (C[c].distances[:,i+1] * sizes[cmplist[Int(2/idx)]])
-#                     println("AFTER (mult with ", sizes[cmplist[Int(2/idx)]],"):", C[c].distances[:,i+1])
-#                 end
-#             end           
-#         end
-#     end
-# end
+
 
 function updateLocalDists(C :: Array{Component,1}, sizes :: Array{Int64,1},  edges :: Array{Int64,1}, cmplist :: Array{Int64,1})  
     s :: Int64 = sum(sizes)
@@ -486,30 +464,30 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
         println("edges:", newedges)
         n :: Int64 = length(newcomp)
         # following line: improves perf? TODO: check
-        cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
-        cA = contractAdjGraph(newedges, newcomp, C, count)
-        println(cA)
-        # following 2 lines: improves perf? TODO: check
-        dist2 = zeros(Float64,count,count)
-        path2 = zeros(Int64,count,count)
-        dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
-        println("path2:", path2)        
-        println("dist2:", dist2)
-        sizes = zeros(Int64,count)
-        sizes = compRealSizes(C, count)
-        println("Sizes:", sizes)
-        distcomp = zeros(Float64,count)
-        distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
-        println("Final distcomp:", distcomp)
-        updateLocalDists(C, sizes,newedges, newcomp)
-        fdistance, fnodes = aggregateLocalDists(C, distcomp)
-        #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
-end
-println(fdistance)
-println(fnodes)
-cf = calculateCF(fdistance, A.n,length(fdistance))
-logw(w,"\t node with argmax{c(", fnodes[indmax(cf)], ")} = ", maximum(cf))
-    println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
+        # cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+        # cA = contractAdjGraph(newedges, newcomp, C, count)
+        # println(cA)
+        # # following 2 lines: improves perf? TODO: check
+        # dist2 = zeros(Float64,count,count)
+        # path2 = zeros(Int64,count,count)
+        # dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
+        # println("path2:", path2)        
+        # println("dist2:", dist2)
+        # sizes = zeros(Int64,count)
+        # sizes = compRealSizes(C, count)
+        # println("Sizes:", sizes)
+        # distcomp = zeros(Float64,count)
+        # distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
+        # println("Final distcomp:", distcomp)
+        # updateLocalDists(C, sizes,newedges, newcomp)
+        # fdistance, fnodes = aggregateLocalDists(C, distcomp)
+        # #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
+        # #println(fdistance)
+        # #println(fnodes)
+        # cf = calculateCF(fdistance, A.n,length(fdistance))
+        # logw(w,"\t node with argmax{c(", fnodes[indmax(cf)], ")} = ", maximum(cf))
+        # println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
+    end
 end
 
 datadir = string(ARGS[1],"/")
@@ -538,7 +516,6 @@ A, L = sparseAdja(Line)
 @time cfcAccelerate(A,w)
 @time exact(Line,w)
 
-exit()
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -551,8 +528,8 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
     @time cfcAccelerate(A, w)
-#   A, L = sparseAdja(G)
-#   @time approx(A,L,w)
+    A, L = sparseAdja(G)
+    @time approx(A,L,w)
 #    @time exact(G,w)
 end
 

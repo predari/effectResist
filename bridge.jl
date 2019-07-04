@@ -131,30 +131,16 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                     if length(v_neighbors) == 1
                         push!(core1nodes, v)
                         push!(core1neighbor, w)
-                        #push!(core2nodes, w)
-                        ########
-                        #edge = Edge(v,w)
-                        #push!(bridges, edge)
                     elseif length(outneighbors(g, w)) == 1
                         push!(core1nodes, w)
                         push!(core1neighbor, v)
-                        #push!(core2nodes, v)
-                        #########
-                        #edge = Edge(v,w)
-                        #push!(bridges, edge)
-                    ### I do not care if edges are ordered    
-                    # elseif v < w
-                    #     edge = Edge(v, w);
-                    #     push!(core3nodes,v);
-                    #     push!(core3nodes,w);
-                    #     push!(bridges, edge)
-                        
                     else
-                        ### I do not care about order!!
-                        # edge = Edge(w, v)
-                        # push!(core3nodes,w);
-                        # push!(core3nodes,v);
-                        # push!(bridges, edge)
+                        println("edge = ",w," ", v)
+                        println("degree = ",length(outneighbors(g, w)),":(",outneighbors(g, w), ") ", length(v_neighbors))
+                        #### TODO!!!
+                        if length(outneighbors(g, w)) == 2
+                            continue;
+                        end
                         push!(edges,w)
                         push!(edges,v)
                     end
@@ -189,7 +175,12 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     #     c = count(x->x==u,core1neighbor);
     #     core2pairs[idx] = c;
     # end
-    # println(core2pairs)
+    println(core1neighbor)
+    for i in core1neighbor
+        if length(outneighbors(g, i)) == 2
+            println(i," ",length(outneighbors(g, i))," " )
+        end
+    end
     t = time()
     ###### TODO: sort(unique()) or unique(sort()) ?
     score1neighbor = sort(core1neighbor)

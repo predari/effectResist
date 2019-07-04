@@ -141,7 +141,8 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
         sumer += - er[u]
         sumer2 += - er2[u]
     end
-    println(cf)
+    #println(cf)
+
     #multiplier = external[findin(bdry,getindex(nodes,l1c_idx))]
     #println("l1c_idx (local numb):", l1c_idx)
     #println("multiplier :", multiplier)

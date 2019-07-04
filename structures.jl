@@ -67,7 +67,7 @@ function printComponent(C:: Component)
     println("- list of link=",C.link)
     println("- link.n=",C.linkc," (",100*C.linkc/C.nc,"%)")
     println("- list of external=",C.external)
-    println("- cf-distances=",C.distances)
+    #println("- cf-distances=",C.distances)
 end
 
 function printEdges(edges:: Array{Int64,1}, n::Int64)
