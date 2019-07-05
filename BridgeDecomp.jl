@@ -184,7 +184,7 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
     B, core1nodes = bridges(LightGraphs.Graph(A))
-    println(core1nodes)
+    #println(core1nodes)
     println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
     println(100*length(B.edges)/A.n, "% nodes are core2.")
     println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
@@ -443,11 +443,11 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     end
     println("Bridges:")
     printBridges(B)
-    println("Components: $count")
-    for (idx, c) in enumerate(C)
-        print("$idx")
-        printComponent(c)
-    end
+    # println("Components: $count")
+    # for (idx, c) in enumerate(C)
+    #     print("$idx")
+    #     printComponent(c)
+    # end
     println(" solving core1 time : ", time()- t, "(s)")
     if count == 1
         c = C[1]

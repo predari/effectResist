@@ -135,12 +135,10 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                         push!(core1nodes, w)
                         push!(core1neighbor, v)
                     else
-                        println("edge = ",w," ", v)
-                        println("degree = ",length(outneighbors(g, w)),":(",outneighbors(g, w), ") ", length(v_neighbors))
                         #### TODO!!!
-                        if length(outneighbors(g, w)) == 2
-                            continue;
-                        end
+                        #if length(outneighbors(g, w)) == 2
+                        #    continue;
+                        #end
                         push!(edges,w)
                         push!(edges,v)
                     end
@@ -175,12 +173,12 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     #     c = count(x->x==u,core1neighbor);
     #     core2pairs[idx] = c;
     # end
-    println(core1neighbor)
-    for i in core1neighbor
-        if length(outneighbors(g, i)) == 2
-            println(i," ",length(outneighbors(g, i))," " )
-        end
-    end
+    # println(core1neighbor)
+    # for i in core1neighbor
+    #     if length(outneighbors(g, i)) == 2
+    #         println(i," ",length(outneighbors(g, i))," " )
+    #     end
+    # end
     t = time()
     ###### TODO: sort(unique()) or unique(sort()) ?
     score1neighbor = sort(core1neighbor)
