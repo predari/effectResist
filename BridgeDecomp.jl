@@ -87,11 +87,26 @@ function exact(G, w :: IOStream)
     distances = erINV(G,1)
     #println("Exact distance:",distances)
     cf = calculateNodeDists(distances, G.n)
-    println("Exact distance:",cf)
+    #println("Exact distance:",cf)
     cf = calculateCF(cf, G.n)
     logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
          maximum(cf))
-    return cf
+    # A, L = sparseAdja(G)
+    # B = Bridges 
+    # A, B = extractBridges(A)
+    # for node in B.edges
+    #     if indmax(cf) == node
+    #         println("MAX VALUE $node IS PART OF LINK NODES!!!")
+    #         return;
+    #     end
+    # end
+    # for node in B.core2nodes
+    #     if indmax(cf) == node
+    #         println("MAX VALUE $node IS PART OF CORE2NODES NODES!!!")
+    #         return;
+    #     end
+    # end
+    return indmax(cf)
 end
 
 #function localApprox(A, brg :: Bridges, w :: IOStream)
@@ -490,6 +505,87 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     end
 end
 
+
+function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int64)
+    start_time = time()
+    n = A.n
+    B = Bridges 
+    A, B = extractBridges(A)
+    t = time()
+    C = Array{Component,1}
+    C = buildComponents(A, B)
+    count = length(C)
+    println("creating components time: ", time()- t, "(s)")
+    t = time()
+    for (idx, c) in enumerate(C)
+        print("Approxing component $idx ...")
+        c.distances = localApprox(c, w)
+        println(" done")
+    end
+    println("Bridges:")
+    printBridges(B)
+    # println("Components: $count")
+    # for (idx, c) in enumerate(C)
+    #     print("$idx")
+    #     printComponent(c)
+    # end
+    println("maxcf = $maxcf")
+    for node in B.edges
+        if maxcf == node
+            println("MAX VALUE $node IS PART OF LINK NODES!!!")
+            return;
+        end
+    end
+    for node in B.core2nodes
+        if maxcf == node
+            println("MAX VALUE $node IS PART OF CORE2NODES NODES!!!")
+            return;
+        end
+    end
+    println(" solving core1 time : ", time()- t, "(s)")
+    if count == 1
+        c = C[1]
+        c.distances = sum(c.distances,2)
+        cf = calculateCF(c.distances, n, c.nc)
+        logw(w,"\t node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
+    else
+        println("components:", B.comp)
+        println("edges:", B.edges)
+        ## strip core1nodes in order to remove internal paths
+        newcomp, newedges = stripcore1nodes(B.comp,B.edges)
+        println("After striping nodes1!")
+        println("components:", newcomp)
+        println("edges:", newedges)
+        # n :: Int64 = length(newcomp)
+        # # following line: improves perf? TODO: check
+        # cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+        # cA = contractAdjGraph(newedges, newcomp, C, count)
+        # println(cA)
+        # # following 2 lines: improves perf? TODO: check
+        # dist2 = zeros(Float64,count,count)
+        # path2 = zeros(Int64,count,count)
+        # dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
+        # println("path2:", path2)        
+        # println("dist2:", dist2)
+        # sizes = zeros(Int64,count)
+        # sizes = compRealSizes(C, count)
+        # println("Sizes:", sizes)
+        # distcomp = zeros(Float64,count)
+        # distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
+        # println("Final distcomp:", distcomp)
+        # updateLocalDists(C, sizes,newedges, newcomp)
+        # fdistance, fnodes = aggregateLocalDists(C, distcomp)
+        # #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
+        # #println(fdistance)
+        # #println(fnodes)
+        # cf = calculateCF(fdistance, A.n,length(fdistance))
+        # logw(w,"\t node with argmax{c(", fnodes[indmax(cf)], ")} = ", maximum(cf))
+        # println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
+    end
+end
+
+
+
 datadir = string(ARGS[1],"/")
 outFName=string(ARGS[1],".txt")
 w = open(outFName, "w")
@@ -501,21 +597,20 @@ logw(w, "-------------------------------------------------------- ")
 #Line = Components3Graph(n,m)
 
 #Line = TestGraph(20, 54)
-Line = TestGraph(18, 48)
-#Line = Components3Graph(8, 22)
-#Line = subTestGraph(14, 38)
+#Line = TestGraph(18, 48)
+Line = TestGraph(21, 54)
 println(Line)
 A, L = sparseAdja(Line)
 @time approx(A,L,w)
 #Line = Components3Graph(8, 22)
-Line = TestGraph(18, 48)
+Line = TestGraph(21, 54)
+#Line = TestGraph(18, 48)
 #Line = TestGraph(20, 54)
-#Line = subTestGraph(14, 38)
 println(Line)
 A, L = sparseAdja(Line)
-@time cfcAccelerate(A,w)
-@time exact(Line,w)
 
+@time max = exact(Line,w)
+@time cfcAccelerate(A, w)
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -527,9 +622,10 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         logw(w," WARNING: Graph is not connected. Program will exit!");
         exit()
     end
-    @time cfcAccelerate(A, w)
-    A, L = sparseAdja(G)
-    @time approx(A,L,w)
-#    @time exact(G,w)
+
+#    A, L = sparseAdja(G)
+#    @time approx(A,L,w)
+    @time max = exact(G,w)
+    @time cfcAccelerate(A, w)    
 end
 

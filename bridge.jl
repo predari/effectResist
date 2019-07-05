@@ -90,6 +90,7 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     
     return bridges
 end
+# second function with different return type
 
 function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     s = Vector{Tuple{T, T, T}}()
@@ -122,11 +123,18 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                 low[v] = pre[v]
                 v_neighbors = outneighbors(g, v)
                 wi = 1
+
             else
                 wi, u, v = pop!(s) # the stack states, explained later
                 v_neighbors = outneighbors(g, v)
                 w = v_neighbors[wi]
                 low[v] = min(low[v], low[w]) # condition check for (v, w) being a tree-edge
+                # println("v=$v, w=$w ==>", v_neighbors, outneighbors(g, w))
+                # println(pre[v] ," < ", low[w], " ==> bridge ")
+                # if low[w] > pre[v]
+                #     push!(edges,w)
+                #     push!(edges,v)
+                # end
                 if low[w] > pre[v]
                     if length(v_neighbors) == 1
                         push!(core1nodes, v)
@@ -135,10 +143,6 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                         push!(core1nodes, w)
                         push!(core1neighbor, v)
                     else
-                        #### TODO!!!
-                        #if length(outneighbors(g, w)) == 2
-                        #    continue;
-                        #end
                         push!(edges,w)
                         push!(edges,v)
                     end
@@ -181,10 +185,11 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     # end
     t = time()
     ###### TODO: sort(unique()) or unique(sort()) ?
+    ### TODO: uncomment
     score1neighbor = sort(core1neighbor)
     core2nodes = Array{Int64}()
     core2nodes = unique(score1neighbor)
-    sizes = zeros(Int64, length(core2nodes))
+     sizes = zeros(Int64, length(core2nodes))
     idx = 1
     sizes[1] = 1
     for i in 2:length(score1neighbor)
