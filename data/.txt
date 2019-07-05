@@ -1,42 +1,28 @@
 -------------------------------------------------------- 
 ****** Running (chinese) approx ******
-	 node with argmax{c(2)} = 0.6153011394465548
+	 node with argmax{c(10)} = 0.5412887828162288
+	 node with argmax{c(5)} = 0.6377993048779101
 ****** Running (my) exact ******
 	 node with argmax{c(2)} = 0.6153011394465543
 ---------------------ego-facebook.edges-------------------------- 
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
+WARNING: contracted graph should be a tree! 
+	 node with argmax{c(2134)} = 0.9787294939444976
 ****** Running (chinese) approx ******
-	 node with argmax{c(211)} = 0.7068684435136268
+	 node with argmax{c(211)} = 0.6979024356183262
 ---------------------out.adjnoun_adjacency_adjacency-------------------------- 
 Reading graph from edges list file out.adjnoun_adjacency_adjacency
 	 G.n: 112	 G.m: 425
-	 node with argmax{c(12)} = 3.070281404973625
+	 node with argmax{c(12)} = 3.0749358315098565
 ****** Running (chinese) approx ******
 	 node with argmax{c(12)} = 3.0659030833580485
 ---------------------out.arenas-jazz-new-------------------------- 
 Reading graph from edges list file out.arenas-jazz-new
 	 G.n: 198	 G.m: 2742
-	 node with argmax{c(30)} = 8.98496980133447
+	 node with argmax{c(30)} = 8.91854086666737
 ****** Running (chinese) approx ******
-	 node with argmax{c(2)} = 8.800441421069578
+	 node with argmax{c(30)} = 8.885970571921662
 ---------------------out.maayan-vidal-------------------------- 
 Reading graph from edges list file out.maayan-vidal
 	 G.n: 2783	 G.m: 6007
-****** Running (chinese) approx ******
-	 node with argmax{c(288)} = 1.2674440991110527
----------------------out.opsahl-powergrid-------------------------- 
-Reading graph from edges list file out.opsahl-powergrid
-	 G.n: 4941	 G.m: 6594
-****** Running (chinese) approx ******
-	 node with argmax{c(19)} = 0.29558874504004395
----------------------out.petster-hamster-------------------------- 
-Reading graph from edges list file out.petster-hamster
-	 G.n: 2000	 G.m: 16098
-****** Running (chinese) approx ******
-	 node with argmax{c(18)} = 3.4771503393922547
----------------------out.subelj_euroroad_euroroad-------------------------- 
-Reading graph from edges list file out.subelj_euroroad_euroroad
-	 G.n: 1039	 G.m: 1305
-****** Running (chinese) approx ******
-	 node with argmax{c(159)} = 0.24575065856315093
