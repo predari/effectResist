@@ -195,6 +195,20 @@ function locateBridges(A :: SparseMatrixCSC{Float64})
     return A,B
 end
 
+
+function computeCore2Bridges(A :: SparseMatrixCSC{Float64})
+    g = LightGraphs.Graph(A)
+    Bridgescore1 :: Int64 = 0
+    Bridgescore2 :: Int64 = 0
+    Bridgescore1 = nbofbridges(g)
+    v1 = k_core(g,2)
+    A1 = A[v1,v1]
+    Bridgescore2 = nbofbridges(LightGraphs.Graph(A1))
+    println("Bridgescore1 = ", Bridgescore1, "Bridgescore2 = ", Bridgescore2)
+    println((100*Bridgescore2)/(nnz(A)/2), "% edges are bridges type core2.")
+end
+
+
 function extractBridges(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
@@ -221,6 +235,7 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     #### Is : for i = eachindex(a) faster than for i = 1:n?
     for i in eachindex(cmps) #1:ncmps
         bdry = collect(intersect(DataStructures.SortedSet(B.core2nodes), Set(map[i])))
+        # bdry = collect(intersect(Set(B.core2nodes), Set(map[i])))
         # TODO: check if link has to be ordered or not!!!!
         # TODO: check if intersect is still that bad with (sorted) arrays (compared to Sets)
         #link = collect(intersect(DataStructures.SortedSet(B.edges), Set(map[i])))
@@ -443,13 +458,18 @@ end
 function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     start_time = time()
     n = A.n
-    B = Bridges 
+    computeCore2Bridges(A)
+    B = Bridges
     A, B = extractBridges(A)
     t = time()
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
+    for c in C
+        print(length(c.nodemap)," ")
+    end
     println("creating components time: ", time()- t, "(s)")
+    return 
     t = time()
     for (idx, c) in enumerate(C)
         print("Approxing component $idx ...")
@@ -509,7 +529,7 @@ end
 function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int64)
     start_time = time()
     n = A.n
-    B = Bridges 
+    B = Bridges
     A, B = extractBridges(A)
     t = time()
     C = Array{Component,1}
@@ -625,7 +645,7 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
 
 #    A, L = sparseAdja(G)
 #    @time approx(A,L,w)
-    @time max = exact(G,w)
+#    @time max = exact(G,w)
     @time cfcAccelerate(A, w)    
 end
 

@@ -1,8 +1,8 @@
 -------------------------------------------------------- 
 ****** Running (chinese) approx ******
-	 node with argmax{c(2)} = 0.6153011394465548
+	 node with argmax{c(1)} = 0.5012312938056449
 ****** Running (my) exact ******
-	 node with argmax{c(2)} = 0.6153011394465543
+	 node with argmax{c(2)} = 0.5266719745222928
 ---------------------coAuthorsCiteseer.graph-------------------------- 
 Reading graph from edges list file coAuthorsCiteseer.graph
 	 G.n: 221858	 G.m: 471362

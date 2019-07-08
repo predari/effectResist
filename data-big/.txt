@@ -1,0 +1,11 @@
+-------------------------------------------------------- 
+****** Running (chinese) approx ******
+	 node with argmax{c(2)} = 0.5266719745222931
+****** Running (my) exact ******
+	 node with argmax{c(2)} = 0.5266719745222928
+---------------------out.com-dblp-------------------------- 
+Reading graph from edges list file out.com-dblp
+	 G.n: 317080	 G.m: 1049866
+---------------------out.roadNet-CA-------------------------- 
+Reading graph from edges list file out.roadNet-CA
+	 G.n: 1957027	 G.m: 2760388
