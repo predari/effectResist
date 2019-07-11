@@ -3,4 +3,22 @@
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
 ****** Running (chinese) approx ******
-	 node with argmax{c(211)} = 0.6973329051392554
+	 node with argmax{c(211)} = 0.7039088274234651
+	 node with argmax{c(2134)} = 0.9159205480100354
+---------------------out.adjnoun_adjacency_adjacency-------------------------- 
+Reading graph from edges list file out.adjnoun_adjacency_adjacency
+	 G.n: 112	 G.m: 425
+****** Running (chinese) approx ******
+	 node with argmax{c(12)} = 3.0659030833580485
+	 node with argmax{c(12)} = 3.031695083815014
+---------------------out.arenas-jazz-new-------------------------- 
+Reading graph from edges list file out.arenas-jazz-new
+	 G.n: 198	 G.m: 2742
+****** Running (chinese) approx ******
+	 node with argmax{c(2)} = 8.800441421069578
+	 node with argmax{c(30)} = 8.828343111965047
+---------------------out.maayan-vidal-------------------------- 
+Reading graph from edges list file out.maayan-vidal
+	 G.n: 2783	 G.m: 6007
+****** Running (chinese) approx ******
+	 node with argmax{c(79)} = 1.2598793231722636

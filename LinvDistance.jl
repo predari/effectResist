@@ -161,8 +161,15 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     #### Here, I calculate this value ss:(er2 + er2[v] .-2er*er[v]) for each v again!!
     #### I do that a first time in L144. I can avoid it by doing for those v:
     #### ss*(external[idx]+1) + external[idx] in L144
-    for (idx, v) in enumerate(l2c_idx)             
-        cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * external[idx] + external[idx]
+    for (idx, v) in enumerate(l2c_idx)
+        m1 :: Int64 = 0
+        m2 :: Int64 = 0
+        for (i, ex) in enumerate(external[idx])
+            m1 += ex 
+            m2 += i*ex
+        end
+        #cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * external[idx] + external[idx]
+        cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * m1 + m2
     end
 
     println("updating distances time:", time() - t, "(s)")

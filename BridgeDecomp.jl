@@ -155,6 +155,34 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs :: Integer)
     return dropzeros!(A), nodes
 end
 
+function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Array{Int64,1})
+    ### delnodes creates a new array so the numbering
+    ### is remapped. I want the numbering to stay the
+    ### same, so I will just write zeros ontop of
+    ### A whereever is needed.
+    ### A = delnodes(A, B.core1nodes)
+    #println(full(A))
+    j = Int64
+    rows = rowvals(A)
+    ## or   colptr = mat.colptr , rowval = mat.rowval
+    #vals = nonzeros(A)
+    for u in core1nodes
+        j = nzrange(A, u)[1]
+        A[u,rows[j]] = 0.0
+        A[rows[j],u] = 0.0
+    end
+    # for e in B.edges        
+    #     A[e.src,e.dst] = 0.0
+    #     A[e.dst,e.src] = 0.0
+    # end
+    for i in 1:2:length(B.edges)
+        A[B.edges[i],B.edges[i+1]] = 0.0
+        A[B.edges[i+1],B.edges[i]] = 0.0
+    end
+    return dropzeros!(A)
+end
+
+
 function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Set{Int64})
     ### delnodes creates a new array so the numbering
     ### is reevaluated. I want the numbering to stay the
@@ -229,7 +257,7 @@ end
 function extractBridges2(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
-    bridges2(LightGraphs.Graph(A))
+    B, core1nodes = bridges2(LightGraphs.Graph(A))
     #println(core1nodes)
     println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
     println(100*length(B.edges)/A.n, "% nodes are core2.")
@@ -244,7 +272,12 @@ end
 
 function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     start_time = time()
+    ##### TODO: here the components should be 3 in total!! 
     cmps, map, ncmps = allComp(A)
+    println(length(cmps))
+    for i in 1:length(cmps)
+        println(length(map[i]))
+    end
     println("finding components time: ", time() - start_time, "(s)")
     t = time()
     C = Array{Component,1}(ncmps)
@@ -252,6 +285,7 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     #### Is : for i = eachindex(a) faster than for i = 1:n?
     for i in eachindex(cmps) #1:ncmps
         bdry = collect(intersect(DataStructures.SortedSet(B.core2nodes), Set(map[i])))
+        # following command is faster but doesn't preserve order
         # bdry = collect(intersect(Set(B.core2nodes), Set(map[i])))
         # TODO: check if link has to be ordered or not!!!!
         # TODO: check if intersect is still that bad with (sorted) arrays (compared to Sets)
@@ -262,10 +296,12 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
         #println(link)
 
         index = findin(B.core2nodes,bdry)
-        #println(B.ext[index])
+        println(B.ext[index])
         tcount :: Int64 = 0
         for j in B.ext[index]
-            tcount += j 
+            for k in j
+                tcount += k
+            end
         end
         B.comp[findin(B.edges,link)] = i 
         C[i] = Component(cmps[i],cmps[i].n,cmps[i].n + tcount, map[i],bdry,link,length(link),
@@ -356,7 +392,9 @@ function compRealSizes(C :: Array{Component,1}, nc :: Int64)
     for i in 1:nc
         externalNodes = 0
         for j in C[i].external
-            externalNodes += j 
+            for k in j
+                externalNodes += k
+            end
         end
         sizes[i] = C[i].nc + externalNodes
     end
@@ -551,24 +589,23 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
     start_time = time()
     n = A.n
     B = Bridges
-    A, B = extractBridges(A)
+    A, B = extractBridges2(A)
     t = time()
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
     println("number of components is = ", count)
-    # println("Bridges:")
-    # printBridges(B)
-    # println("Components: $count")
-    # for (idx, c) in enumerate(C)
-    #     print("$idx")
-    #     printComponent(c)
-    # end
+    println("Bridges:")
+    printBridges(B)
+    println("Components: $count")
+    for (idx, c) in enumerate(C)
+        print("$idx")
+        printComponent(c)
+    end
     println("maxcf = $maxcf")
     for c in C
         print(c.size,"-",length(c.nodemap)," ")
     end
-
     println()
     for node in B.edges
         if maxcf == node
@@ -609,31 +646,31 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
         println("After striping nodes1!")
         println("components:", newcomp)
         println("edges:", newedges)
-        # n :: Int64 = length(newcomp)
-        # # following line: improves perf? TODO: check
-        # cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
-        # cA = contractAdjGraph(newedges, newcomp, C, count)
-        # println(cA)
-        # # following 2 lines: improves perf? TODO: check
-        # dist2 = zeros(Float64,count,count)
-        # path2 = zeros(Int64,count,count)
-        # dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
-        # println("path2:", path2)        
-        # println("dist2:", dist2)
-        # sizes = zeros(Int64,count)
-        # sizes = compRealSizes(C, count)
-        # println("Sizes:", sizes)
-        # distcomp = zeros(Float64,count)
-        # distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
-        # println("Final distcomp:", distcomp)
-        # updateLocalDists(C, sizes,newedges, newcomp)
-        # fdistance, fnodes = aggregateLocalDists(C, distcomp)
-        # #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
-        # #println(fdistance)
-        # #println(fnodes)
-        # cf = calculateCF(fdistance, A.n,length(fdistance))
-        # logw(w,"\t node with argmax{c(", fnodes[indmax(cf)], ")} = ", maximum(cf))
-        # println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
+        n :: Int64 = length(newcomp)
+        # following line: improves perf? TODO: check
+        cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+        cA = contractAdjGraph(newedges, newcomp, C, count)
+        println(cA)
+        # following 2 lines: improves perf? TODO: check
+        dist2 = zeros(Float64,count,count)
+        path2 = zeros(Int64,count,count)
+        dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
+        println("path2:", path2)        
+        println("dist2:", dist2)
+        sizes = zeros(Int64,count)
+        sizes = compRealSizes(C, count)
+        println("Sizes:", sizes)
+        distcomp = zeros(Float64,count)
+        distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
+        println("Final distcomp:", distcomp)
+        updateLocalDists(C, sizes,newedges, newcomp)
+        fdistance, fnodes = aggregateLocalDists(C, distcomp)
+        #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
+        #println(fdistance)
+        #println(fnodes)
+        cf = calculateCF(fdistance, A.n,length(fdistance))
+        logw(w,"\t node with argmax{c(", fnodes[indmax(cf)], ")} = ", maximum(cf))
+        println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
     end
 end
 

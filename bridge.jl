@@ -301,7 +301,8 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
     m :: Int64 = 0
     tms = zeros(T, nv(g))
     degree1neighbor = Array{Int64,1}()
-    
+
+
     @inbounds for u in vertices(g)
         pre[u] != 0 && continue
         v = u #currently visiting vertex
@@ -360,31 +361,35 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
         
     end
     t = time()
-    shell1nodes = Array{Int64,1}()
+    #core1nodes = Array{Int64,1}()
+    core1nodes = Set{T}()
     links = Array{Int64,1}()
     linksneighbor = Array{Int64,1}()
     uedges = unique(edges)
     m = length(edges)
     core2nodes = Array{Int64}()
     core2nodes = unique(degree1neighbor)
-    println("core2nodes",core2nodes)
-    for u in core2nodes
-        print( length(outneighbors(g, u)), " ")
-    end
-    println()
+    cntrcore2nodes = tms[core2nodes]
+    remove = Array{Int64,1}()
+
     for i in uedges
         tms[i] = length(outneighbors(g, i)) - tms[i] + 1  
     end
-    #println("real degree (" ,length(tms)," ) = ", tms)
-    #println("real degree of edges (" ,length(tms[uedges])," ) = ", tms[uedges])
+    for (idx, u) in enumerate(core2nodes)
+        if tms[u] == 1
+            push!(remove,idx)
+        end
+    end
+    deleteat!(core2nodes,remove)
+    nbc2 :: Int64 = length(core2nodes) 
+    deleteat!(cntrcore2nodes,remove)
     
     for i in 1:2:m
         if tms[edges[i]] == 1 && tms[edges[i + 1]] == 1
-            push!(shell1nodes,edges[i])
-            push!(shell1nodes,edges[i+1])
-            #### TODO: here i will find the external of direct one degree1neighbor!!
+            push!(core1nodes,edges[i])
+            push!(core1nodes,edges[i+1])
         elseif tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
-            # category of rdg(i,i+1) = (3,2) falls also here
+            # category of rdg(i,i+1) = (C3,C2) falls also here
             push!(links, edges[i])
             push!(linksneighbor, edges[i+1])
         elseif tms[edges[i + 1]] > 1  && length(outneighbors(g, edges[i])) > 1
@@ -392,16 +397,23 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
             push!(linksneighbor, edges[i])
         end
     end
-    #links = unique(links)
-    println("links", links)
-    println("linksneighbor", linksneighbor)
-    singlecomp =  Array{Int64,1}()
+    ### setdiff(u,v): here u must be the smaller set
+    ### we need space for nodes that are links with
+    ### paths and not nodes of type core2nodes
+    onlylinks = length(setdiff(links, core2nodes))
+    sizes = Array{Array{Int, 1}}(nbc2 + onlylinks)
+    for i in indices(sizes,1) sizes[i] = []; end
+    for i in 1 : nbc2
+        push!(sizes[i], cntrcore2nodes[i])
+    end
+    println(sizes)
+    
+
     duplicate = zeros(Int64,length(linksneighbor))    
     for (idx, u) in enumerate(unique(linksneighbor))
         for v in linksneighbor
             if u == v
                 if duplicate[idx] > 0
-                    push!(singlecomp,u)
                     tms[u] = 2 ## 2 is a random number. Could be any more than 1
                     break;
                 end
@@ -409,43 +421,71 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
             end
         end
     end
-    println("links tms")
-    for l in links
-        println(tms[l])
-    end
-    println("linksneigbor tms")
-    for l in linksneighbor
-        println(tms[l])
-    end
-    bridges =  Array{Int64,1}()
-    println("single comp = ", singlecomp)
-    for (idx,l) in enumerate(links)
-        if tms[linksneighbor[idx]] > 1
-            push!(bridges,l)
-            push!(bridges,linksneighbor[idx])
-        else
-            p,d = bfs_edge_subtree2(g,l,linksneighbor[idx],tms)
-            if length(d) == 1
-                ## TODO: assert length(path) == 2
-                push!(bridges,p[1])
-                push!(bridges,p[2])
-            else
+
+bridges =  Array{Int64,1}()
+i :: Int64 = 1
+for (idx,l) in enumerate(links)
+    if tms[linksneighbor[idx]] > 1
+        push!(bridges,l)
+        push!(bridges,linksneighbor[idx])
+    else
+        p,d = bfs_edge_subtree2(g, l, linksneighbor[idx], tms)        
+        if length(d) == 1
+            ## TODO: assert length(path) == 2
+            push!(bridges,p[1])
+            push!(bridges,p[2])
+        else 
+            cntr = zeros(Int64, maximum(d))
+            cntr = count2(d,length(d))
+            if isempty(findin(core2nodes, l))
+                push!(sizes[nbc2 + i], cntr)
+                i += 1
+            else 
+                idx2 = getindex(findin(core2nodes, l))
+                for j in 2:length(cntr)
+                    push!(sizes[idx2],cntr[j])
+                end
             end
         end
     end
-        
-    ## TODO: do I need links here?
-    links = [links ; singlecomp]
-    #println("final links = ", links)
-    println("final bridges = ", bridges)
-    
-exit()
-#B = Bridges(bridges, core2nodes, sizes)
-#return B, shell1nodes
+end
+
+println("core2nodes:", core2nodes)
+println("sizes:", sizes)
+for i in 1:length(sizes)
+    println(sizes[i])
+end
+println("final bridges = ", bridges)
+B = Bridges(bridges, core2nodes, sizes)
+println(length(core1nodes))
+#return B, core1nodes
+shell1nodes = Array{Int64,1}
+shell1nodes = k_shell(g, 1)
+println(length(shell1nodes))
+return B, shell1nodes
 end
 
 ### TODO start BFS from linksneighbor
 ### TODO stop if node has tms > 1 or if length(outneighbors(g, v) == 1
+
+function count2( array ::  Array{Int64,1}, len :: Int64)
+    cntr = zeros(Int64, maximum(array))
+    #cntr =  Array{Int64,1}()
+    c :: Int64 = 1 
+    for (idx,u) in enumerate(array)
+        if idx == len
+            cntr[u] = c
+        elseif idx > 1
+            if u == array[idx - 1]
+                c += 1
+            else
+                cntr[array[idx - 1]] = c
+                c = 1
+            end
+        end
+    end
+    return cntr
+end
 
 function bfs_edge_subtree2(g::AbstractGraph{T}, source :: Int64, next:: Int64, tms ::  Array{Int64,1} ) where T
     
@@ -504,8 +544,6 @@ function bfs_edge_subtree2(g::AbstractGraph{T}, source :: Int64, next:: Int64, t
         ## do I need sorting?
         #sort!(cur_level)
     end
-    println("path $source:",path)
-    println("distance $source:",distance)
     return path,distance
 end
 

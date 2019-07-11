@@ -10,7 +10,7 @@ mutable struct Component
     link::Array{Int64,1}
     linkc::Int64
     distances:: Array{Float64}
-    external::Array{Int64,1}
+    external :: Array{Array{Int, 1}, 1}
 end
 
 Component(A::SparseMatrixCSC{Float64},nodemap::Array{Int64,1}) = Component(A, A.n, 0, nodemap,
@@ -38,13 +38,14 @@ struct Bridges
     #core2nodes :: Set{Int64}
     core2nodes :: Vector{Int64}
     n :: Int64 # number of core2nodes
-    ext ::Array{Int64,1} # size of n , default 0, count of ext core1 nodes for each core2node 
+    ext :: Array{Array{Int, 1}, 1}
+    #ext ::Array{Int64,1} # size of n , default 0, count of ext core1 nodes for each core2node 
     comp ::Array{Int64,1} # size of edges , corresponding component
 end
 
-Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Int64,1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
+Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Array{Int, 1}, 1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
 
-Bridges(edges :: Array{Int64,1}, core2nodes:: Array{Int64,1}, ext:: Array{Int64,1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
+Bridges(edges :: Array{Int64,1}, core2nodes:: Array{Int64,1}, ext:: Array{Array{Int, 1}, 1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
 
 
 # Bridges(edges, nodes) =
