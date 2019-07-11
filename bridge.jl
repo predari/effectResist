@@ -150,14 +150,10 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                 wi += 1
             end
             
-            # here, we're iterating of all the childen of vertex v, if unvisited, we start a DFS from that child, else we update the low[v] as the edge is a back-edge.
             while wi <= length(v_neighbors)
                 w = v_neighbors[wi]
-                # If this is true , this indicates the vertex is still unvisited, then we push this on the stack.
-                # Pushing onto the stack is analogous to visiting the vertex and starting DFS from that vertex.
                 if pre[w] == 0
-                    push!(s, (wi, u, v)) # the stack states are (index of child, currently visiting vertex, parent vertex of the child)
-                    #updates the value for stimulating DFS from top of the stack
+                    push!(s, (wi, u, v))
                     wi = 0 
                     u = v
                     v = w
@@ -234,8 +230,6 @@ function nbofbridges(g::AG) where {T, AG<:AbstractGraph{T}}
     bridges = Edge{T}[]   #keeps record of the bridge-edges
     nbofBridges :: Int64 = 0
     
-    # We iterate over all vertices, and if they have already been visited (pre != 0), we don't start a DFS from that vertex.
-    # The purpose is to create a DFS forest.
     @inbounds for u in vertices(g)
         pre[u] != 0 && continue
         v = u #currently visiting vertex
@@ -289,4 +283,301 @@ function nbofbridges(g::AG) where {T, AG<:AbstractGraph{T}}
     end
     
     return nbofBridges
+end
+
+
+
+function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
+    s = Vector{Tuple{T, T, T}}()
+    low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
+    pre = zeros(T, nv(g)) #checks the entry time of a vertex in the DFS-stack, pre[u] = 0 if a vertex isn't visited; non-zero, otherwise
+    # bridges = Edge{T}[]   #keeps record of the bridge-edges
+    edges = Array{Int64,1}()
+    ### if nodes of bridges belong to terminal components,
+    ### we do not need to store the edge. Just the nodes
+    ### core1nodes = Set{T}()
+    ### core1neighbor = Array{Int64,1}()
+    ### core3nodes = Set{T}()
+    m :: Int64 = 0
+    tms = zeros(T, nv(g))
+    degree1neighbor = Array{Int64,1}()
+    
+    @inbounds for u in vertices(g)
+        pre[u] != 0 && continue
+        v = u #currently visiting vertex
+        wi::T = zero(T) #index of children of v
+        w::T = zero(T) #children of v
+        cnt::T = one(T) # keeps record of the time
+        first_time = true
+        
+        #start of DFS
+        while !isempty(s) || first_time
+            first_time = false
+            if  wi < 1 #initialisation for vertex v
+                pre[v] = cnt
+                cnt += 1
+                low[v] = pre[v]
+                v_neighbors = outneighbors(g, v)
+                wi = 1
+            else
+                wi, u, v = pop!(s) # the stack states, explained later
+                v_neighbors = outneighbors(g, v)
+                w = v_neighbors[wi]
+                low[v] = min(low[v], low[w]) # condition check for (v, w) being a tree-edge
+                #println("v=$v, w=$w ==>", v_neighbors, outneighbors(g, w))
+                #println(pre[v] ," < ", low[w], " ==> bridge ")
+                if low[w] > pre[v]
+                    push!(edges,w)
+                    tms[w] += 1
+                    push!(edges,v)
+                    tms[v] += 1
+                    if length(v_neighbors) == 1
+                        push!(degree1neighbor, w)
+                    elseif length(outneighbors(g, w)) == 1
+                        push!(degree1neighbor, v)
+                    end
+
+                end
+                wi += 1
+            end
+
+            
+            while wi <= length(v_neighbors)
+                w = v_neighbors[wi]
+                if pre[w] == 0
+                    push!(s, (wi, u, v))
+                    wi = 0 
+                    u = v
+                    v = w
+                    break
+                elseif w != u # (v, w) is a back-edge
+                    low[v] = min(low[v], pre[w]) # condition for back-edges
+                end
+                wi += 1
+            end
+            wi < 1 && continue
+        end
+        
+    end
+    t = time()
+    shell1nodes = Array{Int64,1}()
+    links = Array{Int64,1}()
+    linksneighbor = Array{Int64,1}()
+    uedges = unique(edges)
+    m = length(edges)
+    core2nodes = Array{Int64}()
+    core2nodes = unique(degree1neighbor)
+    println("core2nodes",core2nodes)
+    for u in core2nodes
+        print( length(outneighbors(g, u)), " ")
+    end
+    println()
+    for i in uedges
+        tms[i] = length(outneighbors(g, i)) - tms[i] + 1  
+    end
+    #println("real degree (" ,length(tms)," ) = ", tms)
+    #println("real degree of edges (" ,length(tms[uedges])," ) = ", tms[uedges])
+    
+    for i in 1:2:m
+        if tms[edges[i]] == 1 && tms[edges[i + 1]] == 1
+            push!(shell1nodes,edges[i])
+            push!(shell1nodes,edges[i+1])
+            #### TODO: here i will find the external of direct one degree1neighbor!!
+        elseif tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
+            # category of rdg(i,i+1) = (3,2) falls also here
+            push!(links, edges[i])
+            push!(linksneighbor, edges[i+1])
+        elseif tms[edges[i + 1]] > 1  && length(outneighbors(g, edges[i])) > 1
+            push!(links, edges[i + 1])
+            push!(linksneighbor, edges[i])
+        end
+    end
+    #links = unique(links)
+    println("links", links)
+    println("linksneighbor", linksneighbor)
+    singlecomp =  Array{Int64,1}()
+    duplicate = zeros(Int64,length(linksneighbor))    
+    for (idx, u) in enumerate(unique(linksneighbor))
+        for v in linksneighbor
+            if u == v
+                if duplicate[idx] > 0
+                    push!(singlecomp,u)
+                    tms[u] = 2 ## 2 is a random number. Could be any more than 1
+                    break;
+                end
+                duplicate[idx] += 1
+            end
+        end
+    end
+    println("links tms")
+    for l in links
+        println(tms[l])
+    end
+    println("linksneigbor tms")
+    for l in linksneighbor
+        println(tms[l])
+    end
+    bridges =  Array{Int64,1}()
+    println("single comp = ", singlecomp)
+    for (idx,l) in enumerate(links)
+        if tms[linksneighbor[idx]] > 1
+            push!(bridges,l)
+            push!(bridges,linksneighbor[idx])
+        else
+            p,d = bfs_edge_subtree2(g,l,linksneighbor[idx],tms)
+            if length(d) == 1
+                ## TODO: assert length(path) == 2
+                push!(bridges,p[1])
+                push!(bridges,p[2])
+            else
+            end
+        end
+    end
+        
+    ## TODO: do I need links here?
+    links = [links ; singlecomp]
+    #println("final links = ", links)
+    println("final bridges = ", bridges)
+    
+exit()
+#B = Bridges(bridges, core2nodes, sizes)
+#return B, shell1nodes
+end
+
+### TODO start BFS from linksneighbor
+### TODO stop if node has tms > 1 or if length(outneighbors(g, v) == 1
+
+function bfs_edge_subtree2(g::AbstractGraph{T}, source :: Int64, next:: Int64, tms ::  Array{Int64,1} ) where T
+    
+    n = nv(g)
+    visited = falses(n)
+    distance = Vector{T}()
+    path = Vector{T}()
+    cur_level = Vector{T}()
+    sizehint!(cur_level, n)
+    next_level = Vector{T}()
+    sizehint!(next_level, n)
+    visited[source] = true
+    visited[next] = true
+    push!(cur_level, next)
+    cnt :: Int64 = 1
+    push!(distance,cnt)
+    push!(path,next)
+    cnt += 1
+   
+    while !isempty(cur_level)
+        @inbounds for v in cur_level
+# check what @simd is for
+            @inbounds @simd for i in  outneighbors(g, v)
+                if !visited[i] && tms[i] == 1
+                    push!(next_level, i)
+                    push!(distance,cnt)
+                    push!(path,i)
+                    visited[i] = true
+                elseif !visited[i] && tms[i] != 1
+                    ## this code is for paths that are connected to
+                    ## a component of 1 node, since this node is also
+                    ## connected to other components. Example:
+                    ##        C1 -- 2 -- C3
+                    ##              |
+                    ##              4
+                    ##              |
+                    ##             C6
+                    ## the solution is to consider 2--4 a bridge and
+                    ## 4 is added to component C6 without considering
+                    ## edge 4--6 as a bridge. This is done to make things
+                    ## simpler as I don't think that they will impact
+                    ## a lot the algorithm.
+                    println("WARNING: code may has some logical bugs!")
+                    push!(distance,cnt)
+                    last = path[end]
+                    empty!(path)
+                    push!(path,last)
+                    push!(path,i)
+                    return path , 1
+                end
+            end
+        end
+        empty!(cur_level)
+        cnt += 1
+        cur_level, next_level = next_level, cur_level
+        ## do I need sorting?
+        #sort!(cur_level)
+    end
+    println("path $source:",path)
+    println("distance $source:",distance)
+    return path,distance
+end
+
+
+function bfs_edge_subtree(g::AbstractGraph{T}, source :: Int64, next:: Int64) where T
+    n = nv(g)
+    visited = falses(n)
+    distance = Vector{T}()
+    path = Vector{T}()
+    cur_level = Vector{T}()
+    sizehint!(cur_level, n)
+    next_level = Vector{T}()
+    sizehint!(next_level, n)
+    visited[source] = true
+    visited[next] = true
+    push!(cur_level, next)
+    cnt :: Int64 = 1
+    push!(distance,cnt)
+    push!(path,next)
+    cnt += 1
+   
+    while !isempty(cur_level)
+        @inbounds for v in cur_level
+            @inbounds @simd for i in  outneighbors(g, v)
+                if !visited[i]
+                    push!(next_level, i)
+                    push!(distance,cnt)
+                    push!(path,i)
+                    visited[i] = true
+                end
+            end
+        end
+        empty!(cur_level)
+        cnt += 1
+        cur_level, next_level = next_level, cur_level
+        ## do I need sort
+        sort!(cur_level)
+    end
+    println("path $source:",path)
+    println("distance $source:",distance)
+    return path,distance    
+end
+
+bfs_parents2(g::AbstractGraph, s::Integer; dir = :out) = 
+    (dir == :out) ? _bfs_parents(g, s, outneighbors) : _bfs_parents(g, s, inneighbors)
+
+function _bfs_parents(g::AbstractGraph{T}, source, neighborfn::Function) where T
+    n = nv(g)
+    visited = falses(n)
+    parents = zeros(T, nv(g))
+    cur_level = Vector{T}()
+    sizehint!(cur_level, n)
+    next_level = Vector{T}()
+    sizehint!(next_level, n)
+    @inbounds for s in source
+        visited[s] = true
+        push!(cur_level, s)
+        parents[s] = s
+    end
+    while !isempty(cur_level)
+        @inbounds for v in cur_level
+            @inbounds @simd for i in  neighborfn(g, v)
+                if !visited[i]
+                    push!(next_level, i)
+                    parents[i] = v
+                    visited[i] = true
+                end
+            end
+        end
+        empty!(cur_level)
+        cur_level, next_level = next_level, cur_level
+        sort!(cur_level)
+    end
+    return parents
 end

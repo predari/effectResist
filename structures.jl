@@ -4,6 +4,7 @@ using LightGraphs
 mutable struct Component
     A:: SparseMatrixCSC{Float64}
     nc::Int64
+    size::Int64
     nodemap::Array{Int64,1} # size of nc Array{Int64,1}
     bdry::Array{Int64,1} # bdry nodes in Cluster
     link::Array{Int64,1}
@@ -12,8 +13,9 @@ mutable struct Component
     external::Array{Int64,1}
 end
 
-Component(A::SparseMatrixCSC{Float64},nodemap::Array{Int64,1}) = Component(A, A.n, nodemap,
-                                                                           nothing, 0,
+Component(A::SparseMatrixCSC{Float64},nodemap::Array{Int64,1}) = Component(A, A.n, 0, nodemap,
+                                                                           nothing, nothing, 0,
+                                                                           nothing,nothing
                                                                            #zeros(A.n)
                                                                            )
 
@@ -62,6 +64,7 @@ Bridges(edges :: Array{Int64,1}, core2nodes:: Array{Int64,1}, ext:: Array{Int64,
 function printComponent(C:: Component)
     println("- A type:",eltype(C.A))
     println("- A.n=",C.nc)
+    println("- C size=",C.size)
     println("- list of nodes=",C.nodemap)
     println("- list of bdry=",C.bdry)
     println("- list of link=",C.link)

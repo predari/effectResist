@@ -66,6 +66,7 @@ function approx(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: 
     logw(w,"****** Running (chinese) approx ******")
     u, maxcf = erJLT(A,L)
     logw(w,"\t node with argmax{c(", u, ")} = ", maxcf)
+    return u
 end
 
 # TODO: remove
@@ -224,6 +225,22 @@ function extractBridges(A :: SparseMatrixCSC{Float64})
     println("remove bridges time: ", time()- t, "(s)")
     return A,B
 end
+### testing function
+function extractBridges2(A :: SparseMatrixCSC{Float64})
+    start_time = time()
+    B = Bridges
+    bridges2(LightGraphs.Graph(A))
+    #println(core1nodes)
+    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
+    println(100*length(B.edges)/A.n, "% nodes are core2.")
+    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
+    println( 100*length(core1nodes)/(A.n), "% nodes are core1.")
+    println("finding bridges time: ", time() - start_time, "(s)")
+    t = time()
+    A  = removeBridges(A, B, core1nodes)
+    println("remove bridges time: ", time()- t, "(s)")
+    return A,B
+end
 
 function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     start_time = time()
@@ -246,8 +263,12 @@ function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
 
         index = findin(B.core2nodes,bdry)
         #println(B.ext[index])
+        tcount :: Int64 = 0
+        for j in B.ext[index]
+            tcount += j 
+        end
         B.comp[findin(B.edges,link)] = i 
-        C[i] = Component(cmps[i],cmps[i].n,map[i],bdry,link,length(link),
+        C[i] = Component(cmps[i],cmps[i].n,cmps[i].n + tcount, map[i],bdry,link,length(link),
                          zeros(cmps[i].n,length(link)), B.ext[index])
         if cmps[i].n >= maxc
             maxc = i
@@ -466,10 +487,9 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     C = buildComponents(A, B)
     count = length(C)
     for c in C
-        print(length(c.nodemap)," ")
+        print(c.size,"-",length(c.nodemap)," ")
     end
-    println("creating components time: ", time()- t, "(s)")
-    return 
+    println("creating components time: ", time()- t, "(s)") 
     t = time()
     for (idx, c) in enumerate(C)
         print("Approxing component $idx ...")
@@ -478,12 +498,13 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     end
     println("Bridges:")
     printBridges(B)
-    # println("Components: $count")
-    # for (idx, c) in enumerate(C)
-    #     print("$idx")
-    #     printComponent(c)
-    # end
+    println("Components: $count")
+    for (idx, c) in enumerate(C)
+        print("$idx")
+        printComponent(c)
+    end
     println(" solving core1 time : ", time()- t, "(s)")
+    return
     if count == 1
         c = C[1]
         c.distances = sum(c.distances,2)
@@ -535,32 +556,44 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
-    println("creating components time: ", time()- t, "(s)")
-    t = time()
-    for (idx, c) in enumerate(C)
-        print("Approxing component $idx ...")
-        c.distances = localApprox(c, w)
-        println(" done")
-    end
-    println("Bridges:")
-    printBridges(B)
+    println("number of components is = ", count)
+    # println("Bridges:")
+    # printBridges(B)
     # println("Components: $count")
     # for (idx, c) in enumerate(C)
     #     print("$idx")
     #     printComponent(c)
     # end
     println("maxcf = $maxcf")
+    for c in C
+        print(c.size,"-",length(c.nodemap)," ")
+    end
+
+    println()
     for node in B.edges
         if maxcf == node
             println("MAX VALUE $node IS PART OF LINK NODES!!!")
-            return;
+            break;
         end
     end
     for node in B.core2nodes
         if maxcf == node
             println("MAX VALUE $node IS PART OF CORE2NODES NODES!!!")
-            return;
+            break;
         end
+    end
+    for (idx, c) in enumerate(C)
+        if findin(c.nodemap, maxcf) != Array{Int64,1}(0)
+            println("max is in component $idx with length=", length(c.nodemap))
+            break;
+        end
+    end
+    println("creating components time: ", time()- t, "(s)")
+    t = time()
+    for (idx, c) in enumerate(C)
+        print("Approxing component $idx ...")
+        c.distances = localApprox(c, w)
+        println(" done")
     end
     println(" solving core1 time : ", time()- t, "(s)")
     if count == 1
@@ -612,25 +645,25 @@ w = open(outFName, "w")
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
-#n = 8
-#m = 20
-#Line = Components3Graph(n,m)
+# #n = 8
+# #m = 20
+# #Line = Components3Graph(n,m)
 
-#Line = TestGraph(20, 54)
-#Line = TestGraph(18, 48)
-Line = TestGraph(21, 54)
-println(Line)
-A, L = sparseAdja(Line)
-@time approx(A,L,w)
-#Line = Components3Graph(8, 22)
-Line = TestGraph(21, 54)
-#Line = TestGraph(18, 48)
-#Line = TestGraph(20, 54)
-println(Line)
-A, L = sparseAdja(Line)
+# #Line = TestGraph(20, 54)
+# #Line = TestGraph(18, 48)
+# Line = TestGraph(21, 54)
+# println(Line)
+# A, L = sparseAdja(Line)
+# @time approx(A,L,w)
+# #Line = Components3Graph(8, 22)
+# Line = TestGraph(21, 54)
+# #Line = TestGraph(18, 48)
+# #Line = TestGraph(20, 54)
+# println(Line)
+# A, L = sparseAdja(Line)
 
-@time max = exact(Line,w)
-@time cfcAccelerate(A, w)
+# @time max = exact(Line,w)
+# @time cfcAccelerate(A, w)
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -643,9 +676,14 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         exit()
     end
 
-#    A, L = sparseAdja(G)
-#    @time approx(A,L,w)
+    A, L = sparseAdja(G)
+    @time  max = approx(A,L,w)
 #    @time max = exact(G,w)
-    @time cfcAccelerate(A, w)    
+    @time cfcAccelerate(A, w, max)
+#    @time cfcAccelerate(A, w)
 end
 
+# - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]
+# - list of ext (count)=[280, 455, 756, 706, 170, 92, 57, 31, 147, 96]
+# - list of core3nodes=[2134, 2075, 2075, 289, 1135, 1020, 1020, 1000, 2792, 2384, 2384, 211]
+# - comp of each node=[2, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]

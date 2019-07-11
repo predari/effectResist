@@ -1,26 +1,6 @@
 -------------------------------------------------------- 
-****** Running (chinese) approx ******
-	 node with argmax{c(2)} = 0.5266719745222931
-****** Running (my) exact ******
-	 node with argmax{c(2)} = 0.5266719745222928
 ---------------------ego-facebook.edges-------------------------- 
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
----------------------out.adjnoun_adjacency_adjacency-------------------------- 
-Reading graph from edges list file out.adjnoun_adjacency_adjacency
-	 G.n: 112	 G.m: 425
----------------------out.arenas-jazz-new-------------------------- 
-Reading graph from edges list file out.arenas-jazz-new
-	 G.n: 198	 G.m: 2742
----------------------out.maayan-vidal-------------------------- 
-Reading graph from edges list file out.maayan-vidal
-	 G.n: 2783	 G.m: 6007
----------------------out.opsahl-powergrid-------------------------- 
-Reading graph from edges list file out.opsahl-powergrid
-	 G.n: 4941	 G.m: 6594
----------------------out.petster-hamster-------------------------- 
-Reading graph from edges list file out.petster-hamster
-	 G.n: 2000	 G.m: 16098
----------------------out.subelj_euroroad_euroroad-------------------------- 
-Reading graph from edges list file out.subelj_euroroad_euroroad
-	 G.n: 1039	 G.m: 1305
+****** Running (chinese) approx ******
+	 node with argmax{c(211)} = 0.6973329051392554

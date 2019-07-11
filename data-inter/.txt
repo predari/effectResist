@@ -1,20 +1,30 @@
 -------------------------------------------------------- 
 ****** Running (chinese) approx ******
-	 node with argmax{c(1)} = 0.5012312938056449
+	 node with argmax{c(2)} = 0.5266719745222931
 ****** Running (my) exact ******
 	 node with argmax{c(2)} = 0.5266719745222928
 ---------------------coAuthorsCiteseer.graph-------------------------- 
 Reading graph from edges list file coAuthorsCiteseer.graph
 	 G.n: 221858	 G.m: 471362
+****** Running (chinese) approx ******
+	 node with argmax{c(389)} = 1.3883802418197524
 ---------------------luxembourg.osm.graph-------------------------- 
 Reading graph from edges list file luxembourg.osm.graph
 	 G.n: 109836	 G.m: 113966
+****** Running (chinese) approx ******
+	 node with argmax{c(46271)} = 0.05581894056314082
 ---------------------out.arenas-pgp-------------------------- 
 Reading graph from edges list file out.arenas-pgp
 	 G.n: 10680	 G.m: 24316
+****** Running (chinese) approx ******
+	 node with argmax{c(183)} = 0.6873176505261567
 ---------------------out.reactome-------------------------- 
 Reading graph from edges list file out.reactome
 	 G.n: 5973	 G.m: 145778
+****** Running (chinese) approx ******
+	 node with argmax{c(175)} = 3.579517602359738
 ---------------------out.z-caida20071105-------------------------- 
 Reading graph from edges list file out.z-caida20071105
 	 G.n: 26475	 G.m: 53381
+****** Running (chinese) approx ******
+	 node with argmax{c(164)} = 1.384548340407887
