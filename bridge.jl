@@ -535,6 +535,7 @@ function bfs_edge_subtree2(g::AbstractGraph{T}, source :: Int64, next:: Int64, t
                     println("WARNING: code may has some logical bugs!")
                     push!(distance,cnt)
                     last = path[end]
+                    println("WARNING: the bridges that are not treated as bridges:",path)
                     empty!(path)
                     push!(path,last)
                     push!(path,i)

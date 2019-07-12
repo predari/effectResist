@@ -2,5 +2,3 @@
 ---------------------out.arenas-pgp-------------------------- 
 Reading graph from edges list file out.arenas-pgp
 	 G.n: 10680	 G.m: 24316
-****** Running (chinese) approx ******
-	 node with argmax{c(183)} = 0.6878001718287581

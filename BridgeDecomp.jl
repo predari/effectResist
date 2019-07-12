@@ -69,6 +69,15 @@ function approx(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: 
     return u
 end
 
+function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
+    logw(w,"****** Running (core2) approx ******")
+    core2 = Array{Int64,1}
+    core2 = k_core(LightGraphs.Graph(A), 2)    
+    u, maxcf = erJLT(A[core2,core2],L[core2,core2])
+    logw(w,"\t node with argmax{c(", core2[u], ")} = ", maxcf)
+    return u
+end
+
 # TODO: remove
 function erINV(G, alldistances)    
     n = G.n;
@@ -162,7 +171,7 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
     ### A whereever is needed.
     ### A = delnodes(A, B.core1nodes)
     #println(full(A))
-    j = Int64
+    j :: Int64 = 0
     rows = rowvals(A)
     ## or   colptr = mat.colptr , rowval = mat.rowval
     #vals = nonzeros(A)
@@ -631,29 +640,49 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
         end
     end
     println("creating components time: ", time()- t, "(s)")
-    t = time()
-    print("Approxing component 1 ...")
-    for (idx, c) in enumerate(C)
-        #print("Approxing component $idx ...")
-        c.distances = localApprox(c, w)
-        #println(" done")
-    end
-    println(" solving core1 time : ", time()- t, "(s)")
+
+    # for (idx, c) in enumerate(C)
+    #     t = time()
+    #     #print("Approxing component $idx ...")
+    #     c.distances = localApprox(c, w)
+    #     println("calculate component $idx (", c.nc, ") time:", time() - t, "(s)")
+    #     #println(" done")
+    # end
+    # println(" solving core1 time : ", time()- t, "(s)")
     if count == 1
         c = C[1]
+        t = time()
+        c.distances = localApprox(c, w)
+        println("calculate component 1 (", c.nc, ") time:", time() - t, "(s)")
         c.distances = sum(c.distances,2)
         cf = calculateCF(c.distances, n, c.nc)
         logw(w,"\t node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
     else
+        maxcmpsize = 0
+        maxcmpid = 0
+        for (idx, c) in enumerate(C)
+            if c.size > maxcmpsize
+                maxcmpsize = c.size
+                maxcmpsize = idx
+            end
+            t = time()
+            c.distances = localApprox(c, w)
+            println("calculate component $idx (", c.nc, ") time:", time() - t, "(s)")
+            #c.distances = sum(c.distances,2)
+            #cf = calculateCF(c.distances, n, c.nc)
+            #logw(w,"\t In comp node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
+            #t = time()
+            #LinvDistanceLinks(c)
+            #println("calculate only link er time:", time() - t, "(s)")       
+        end
+         
         t = time()
-        println("components:", B.comp)
-#        println("edges:", B.edges)
+        # println("components:", B.comp)
+        # println("edges:", B.edges)
         ## strip core1nodes in order to remove internal paths
         newcomp, newedges = stripcore1nodes(B.comp,B.edges)
-        println("After striping nodes1!")
-        println("ok")
-        println("components:", newcomp)
-        println("ok")
+        #println("After striping nodes1!")
+        #println("components:", newcomp)
         #println("edges:", newedges)
         n :: Int64 = length(newcomp)
         # following line: improves perf? TODO: check
@@ -664,14 +693,14 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
         dist2 = zeros(Float64,count,count)
         path2 = zeros(Int64,count,count)
         dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
- #       println("path2:", path2)        
- #       println("dist2:", dist2)
+        #       println("path2:", path2)        
+        #       println("dist2:", dist2)
         sizes = zeros(Int64,count)
         sizes = compRealSizes(C, count)
   #      println("Sizes:", sizes)
         distcomp = zeros(Float64,count)
         distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
-   #     println("Final distcomp:", distcomp)
+        #     println("Final distcomp:", distcomp)
         updateLocalDists(C, sizes,newedges, newcomp)
         fdistance, fnodes = aggregateLocalDists(C, distcomp)
         #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
@@ -727,7 +756,9 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
 #    @time  max = approx(A,L,w)
 #    @time max = exact(G,w)
     @time cfcAccelerate(A, w, 25)
-#    @time cfcAccelerate(A, w)
+    #    @time cfcAccelerate(A, w)
+    @time approxcore2(A, L, w)
+  #  exit()
 end
 
 # - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]

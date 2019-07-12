@@ -1,11 +1,4 @@
 -------------------------------------------------------- 
-****** Running (chinese) approx ******
-	 node with argmax{c(1)} = 0.5012312938056449
-****** Running (my) exact ******
-	 node with argmax{c(2)} = 0.5266719745222928
 ---------------------out.facebook-wosn-links-------------------------- 
 Reading graph from edges list file out.facebook-wosn-links
 	 G.n: 397316	 G.m: 1150755
----------------------out.youtube-------------------------- 
-Reading graph from edges list file out.youtube
-	 G.n: 1134890	 G.m: 2987624

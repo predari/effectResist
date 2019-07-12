@@ -2,30 +2,28 @@
 ---------------------ego-facebook.edges-------------------------- 
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
-****** Running (chinese) approx ******
-	 node with argmax{c(211)} = 0.7002991840265971
-	 node with argmax{c(2147)} = 0.9158510691162636
+	 node with argmax{c(2147)} = 0.9196991106187863
+****** Running (core2) approx ******
+	 node with argmax{c(999)} = 2.236499975760009
 ---------------------out.adjnoun_adjacency_adjacency-------------------------- 
 Reading graph from edges list file out.adjnoun_adjacency_adjacency
 	 G.n: 112	 G.m: 425
-****** Running (chinese) approx ******
-	 node with argmax{c(12)} = 3.065903083358049
-	 node with argmax{c(12)} = 3.0345744555201315
+	 node with argmax{c(12)} = 3.0436013206241053
+****** Running (core2) approx ******
+	 node with argmax{c(12)} = 4.198582683870493
 ---------------------out.arenas-jazz-new-------------------------- 
 Reading graph from edges list file out.arenas-jazz-new
 	 G.n: 198	 G.m: 2742
-****** Running (chinese) approx ******
-	 node with argmax{c(30)} = 8.885970571921664
-	 node with argmax{c(30)} = 8.853958441992095
+	 node with argmax{c(30)} = 8.862263688810842
+****** Running (core2) approx ******
+	 node with argmax{c(30)} = 11.744707996740885
 ---------------------out.maayan-vidal-------------------------- 
 Reading graph from edges list file out.maayan-vidal
 	 G.n: 2783	 G.m: 6007
-****** Running (chinese) approx ******
-	 node with argmax{c(288)} = 1.2675936356874549
 WARNING: contracted graph should be a tree! 
-	 node with argmax{c(288)} = 1.3324750558548653
+	 node with argmax{c(288)} = 1.334912109237655
+****** Running (core2) approx ******
+	 node with argmax{c(288)} = 2.7287414020448306
 ---------------------out.opsahl-powergrid-------------------------- 
 Reading graph from edges list file out.opsahl-powergrid
 	 G.n: 4941	 G.m: 6594
-****** Running (chinese) approx ******
-	 node with argmax{c(18)} = 0.2990840890781277
