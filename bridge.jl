@@ -361,7 +361,6 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
         
     end
     t = time()
-    #core1nodes = Array{Int64,1}()
     core1nodes = Set{T}()
     links = Array{Int64,1}()
     linksneighbor = Array{Int64,1}()
@@ -406,7 +405,7 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
     for i in 1 : nbc2
         push!(sizes[i], cntrcore2nodes[i])
     end
-    println(sizes)
+    #println(sizes)
     
 
     duplicate = zeros(Int64,length(linksneighbor))    
@@ -438,7 +437,10 @@ for (idx,l) in enumerate(links)
             cntr = zeros(Int64, maximum(d))
             cntr = count2(d,length(d))
             if isempty(findin(core2nodes, l))
-                push!(sizes[nbc2 + i], cntr)
+                sizes[nbc2 + i] = [];
+                for j in 1:length(cntr)
+                    push!(sizes[nbc2 + i], cntr[j])
+                end
                 i += 1
             else 
                 idx2 = getindex(findin(core2nodes, l))
@@ -450,18 +452,20 @@ for (idx,l) in enumerate(links)
     end
 end
 
-println("core2nodes:", core2nodes)
-println("sizes:", sizes)
-for i in 1:length(sizes)
-    println(sizes[i])
-end
-println("final bridges = ", bridges)
+#println("core2nodes:", core2nodes)
+#println("sizes:", sizes)
+# for i in 1:length(sizes)
+#     println(sizes[i])
+# end
+# println("final bridges = ", bridges)
 B = Bridges(bridges, core2nodes, sizes)
-println(length(core1nodes))
-#return B, core1nodes
+println("COUNT TIMING IS ",time()- t, "(s)")
+t = time()
+#println(length(core1nodes))
 shell1nodes = Array{Int64,1}
 shell1nodes = k_shell(g, 1)
-println(length(shell1nodes))
+#println(length(shell1nodes))
+println("shell1time ",time()- t, "(s)")
 return B, shell1nodes
 end
 
@@ -582,8 +586,8 @@ function bfs_edge_subtree(g::AbstractGraph{T}, source :: Int64, next:: Int64) wh
         ## do I need sort
         sort!(cur_level)
     end
-    println("path $source:",path)
-    println("distance $source:",distance)
+    #println("path $source:",path)
+    #println("distance $source:",distance)
     return path,distance    
 end
 
