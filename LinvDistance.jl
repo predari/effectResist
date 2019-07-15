@@ -1,7 +1,7 @@
 include("structures.jl")
 using Laplacians
 using LightGraphs
-
+using StatsBase
 
 function LinvDistance(a::SparseMatrixCSC{Float64}, extnode::Integer; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     f = approxCholLap(a,tol=1e-5);
@@ -36,6 +36,222 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, extnode::Integer; ep=0.3, mat
      end
      return cf
 end
+
+#### beware of merges!
+function SamplingDistLink(c :: Component, pivots :: Array{Int64,1}, lapSolver)
+
+    start_time = time()
+    
+    nodes = c.nodemap
+    bdry = c.bdry
+    external = c.external
+    link = c.link
+    sz = c.linkc
+    n = c.nc
+
+    l3c_idx = findin(nodes, link)
+    l2c_idx = findin(nodes, bdry)
+    
+    #println("size of link = ", sz)
+    #println("local link num= ", l3c_idx)
+    
+    #t = time()
+    #f = approxCholLap(c.A,tol=1e-5);
+    #println(" f = CholLap time: ", time()- t, "(s)")
+    pv = length(pivots)
+    cf = zeros(pv, sz)
+
+    b = zeros(n)
+    for (idx1, u) in enumerate(l3c_idx)
+        b[u] = 1.0
+        for (idx2, s) in enumerate(pivots)  
+            b[s] = -1.0            
+            v = zeros(n)
+            v = lapSolver(b)
+            cf[idx2,idx1] = v[u] - v[s]
+            b[s] = 0.0
+        end
+    end   
+    return cf
+end
+
+
+
+#### beware of merges!
+function SamplingDistAll(c :: Component, pivots :: Array{Int64,1}, lapSolver)
+
+    start_time = time()
+    
+    nodes = c.nodemap
+    sz = c.linkc
+    n = c.nc
+
+    #t = time()
+    #f = approxCholLap(c.A,tol=1e-5);
+    #println(" f = CholLap time: ", time()- t, "(s)")
+    pv = length(pivots)
+    cf = zeros(n)
+
+    b = zeros(n)
+    for (idx1, u) in enumerate(nodes)
+        b[idx1] = 1.0
+        for (idx2, s) in enumerate(pivots)  
+            b[s] = -1.0            
+            v = zeros(n)
+            v = lapSolver(b)
+            cf[idx1] += v[idx1] - v[s]
+            b[s] = 0.0
+        end
+    end   
+    return cf
+end
+
+
+
+#### beware of merges!
+function SamplingDistLink(c :: Component, pv :: Int64 ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+
+    start_time = time()
+    
+    nodes = c.nodemap
+    bdry = c.bdry
+    external = c.external
+    link = c.link
+    sz = c.linkc
+    n = c.nc
+
+    l3c_idx = findin(nodes, link)
+    l2c_idx = findin(nodes, bdry)
+    
+    #println("size of link = ", sz)
+    #println("local link num= ", l3c_idx)
+    
+    t = time()
+    f = approxCholLap(c.A,tol=1e-5);
+    println(" f = CholLap time: ", time()- t, "(s)")
+    if  n < pv
+        println("WARNING: number of pivots is smaller than number of nodes!")
+        exit()
+    end
+    pivots = StatsBase.sample(1:n, pv, replace = false)
+    cf = zeros(pv, sz)
+
+    b = zeros(n)
+    for (idx1, u) in enumerate(l3c_idx)
+        b[u] = 1.0
+        for (idx2, s) in enumerate(pivots)  
+            b[s] = -1.0            
+            v = zeros(n)
+            v = f(b)
+            cf[idx2,idx1] = v[u] - v[s]
+            b[s] = 0.0
+        end
+    end   
+    return cf
+end
+
+#### beware of merges!
+function SamplingDistAll(c :: Component, pv :: Int64 ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+
+    start_time = time()
+    
+    nodes = c.nodemap
+    sz = c.linkc
+    n = c.nc
+
+    t = time()
+    f = approxCholLap(c.A,tol=1e-5);
+    println(" f = CholLap time: ", time()- t, "(s)")
+    if  n < pv
+        println("WARNING: number of pivots is smaller than number of nodes!")
+        exit()
+    end
+    pivots = StatsBase.sample(1:n, pv, replace = false)
+    cf = zeros(n)
+
+    b = zeros(n)
+    for (idx1, u) in enumerate(nodes)
+        b[idx1] = 1.0
+        for s in pivots  
+            b[s] = -1.0            
+            v = zeros(n)
+            v = f(b)
+            cf[idx1] += v[idx] - v[s]
+            b[s] = 0.0
+        end
+    end   
+    return cf
+end
+
+
+
+#### beware of merges!
+function LinksLinvDist(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+    start_time = time()
+    
+    nodes = c.nodemap
+    bdry = c.bdry
+    external = c.external
+    link = c.link
+    sz = c.linkc
+    n = c.nc
+    println(nodes)
+    println(link)
+
+    l3c_idx = findin(nodes, link)
+    l2c_idx = findin(nodes, bdry)
+    #println("local link numbering ", l3c_idx)
+
+    println("size of link = ", sz)
+    println("link = ", l3c_idx)
+    t = time()
+    f = approxCholLap(c.A[[l3c_idx],[l3c_idx]],tol=1e-5);
+    f = cholLap(a,tol=1e-5);
+    println(" f = CholLap time: ", time()- t, "(s)")
+    k = round(Int, JLfac*log(n))     
+    U = wtedEdgeVertexMat3(c.A,l3c_idx)
+    m = size(U,1)
+    l = size(U,2)
+    println("m = ", m, " nnz(A) = ", nnz(c.A)/2)
+    println("l = ", l, " sz = ", sz)
+    er = zeros(l)
+    er2 = zeros(l)
+    cf = zeros(l, sz + 1)
+ 
+    for i = 1:k # q 
+        r = randn(m) 
+        ur = U'*r 
+        v = zeros(l)
+        v = f(ur[:])
+        er.+= v./k
+        er2.+= v.^2/k
+    end
+    
+    for (idx, u) in enumerate(l3c_idx)
+        for i in 1:n
+            cf[i, idx + 1] = er2[i] + er2[u] -2er[i]*er[u]
+        end
+    end
+   
+    println("calculating only for link time (without creating of matrix):", time() - t, "(s)")
+    return cf
+end
+
+
+### check for correctness!!!
+function wtedEdgeVertexMat3(mat::SparseMatrixCSC, nodes ::Array{Int64,1})
+    ## return U (m,n) only for link nodes --> U (m,l)    
+    (ai,aj,av) = findnz(triu(mat,1))
+
+    m = length(ai)
+    n = size(mat)[2] 
+    v = av.^(1/2)
+    return (sparse(collect(1:m),ai,v,m,n) - sparse(collect(1:m),aj,v,m,n))[:,nodes]
+end
+
+
+
+
 
 
 

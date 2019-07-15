@@ -14,6 +14,7 @@ using Laplacians
 using LightGraphs
 #using LightGraphs.SimpleEdge
 using DataStructures
+using StatsBase
 
 function isTree(A::SparseMatrixCSC)
     isConnected(A) && (nnz(A) == 2*(A.n-1))
@@ -599,6 +600,16 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
 end
 
 
+function samplePivots(n :: Int64, pv :: Int64  )
+    pivots = Array{Int64,1}
+    if  n < pv
+        println("WARNING: number of pivots is smaller than number of nodes!")
+        exit()
+    end
+    pivots = StatsBase.sample(1:n, pv, replace = false)
+    return pivots
+end
+
 function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int64)
     start_time = time()
     n = A.n
@@ -668,14 +679,42 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             t = time()
             c.distances = localApprox(c, w)
             println("calculate component $idx (", c.nc, ") time:", time() - t, "(s)")
-            #c.distances = sum(c.distances,2)
+            linkdistance = sum(c.distances,1)[:,2:end]
+            c.distances = sum(c.distances,2)
             #cf = calculateCF(c.distances, n, c.nc)
-            #logw(w,"\t In comp node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
-            #t = time()
-            #LinvDistanceLinks(c)
-            #println("calculate only link er time:", time() - t, "(s)")       
+            logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
+            println(c.distances)
+            for (idx,u) in enumerate(c.link)
+                logw(w,"\t Link $u = ", c.distances[findin(c.nodemap, u)])
+                tmp = 0
+                for i in c.distances
+                    if i < getindex(c.distances[findin(c.nodemap, u)])
+                        tmp +=1
+                    end
+                end
+                println("For link $u ", 100*tmp/c.nc, "% nodes have smaller effective resistance!" )
+            end
+            pivots = Array{Int64,1}
+            f = approxCholLap(c.A,tol=1e-5);
+            t = time()
+            pivots =samplePivots(c.nc, 10 )
+            c.distances = SamplingDistAll(c, pivots,f)
+            println("calculate sampling time (all):", time() - t, "(s)")
+            logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
+            println(c.distances)
+            t = time()
+            ## TODO: I need to also pass f (approxCholLap) as inputs of SamplingDistLink and All
+            distances = SamplingDistLink(c, pivots,f)
+            println("calculate sampling time (links):", time() - t, "(s)")
+            distances = sum(distances,1)
+            println(distances)
+            for (idx,u) in enumerate(c.link)
+                logw(w,"\t Link ", u," = ", distances[idx])
+            end
+            #cf = calculateCF(linkdistance, n, c.nc)
+            #logw(w,"\t For links: node with argmax{c(", c.link[c.nodemap[indmax(cf)]], ")} = ", maximum(cf))
         end
-         
+        return 
         t = time()
         # println("components:", B.comp)
         # println("edges:", B.edges)

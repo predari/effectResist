@@ -2,28 +2,44 @@
 ---------------------ego-facebook.edges-------------------------- 
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
-	 node with argmax{c(2147)} = 0.9196991106187863
+	 Locally: node with argmin{c(999)} = 3272.5636106292536
+	 Link 289 = [3681.87]
+	 Locally: node with argmin{c(1000)} = 3.2313042734359185
+	 Link 289 = 6.407595528515152
+	 Locally: node with argmin{c(2134)} = 204.442587760792
+	 Link 2134 = [204.443]
+	 Locally: node with argmin{c(2166)} = 4.5
+	 Link 2134 = 5.208333333333333
 ****** Running (core2) approx ******
 	 node with argmax{c(999)} = 2.236499975760009
 ---------------------out.adjnoun_adjacency_adjacency-------------------------- 
 Reading graph from edges list file out.adjnoun_adjacency_adjacency
 	 G.n: 112	 G.m: 425
-	 node with argmax{c(12)} = 3.0436013206241053
+	 node with argmax{c(12)} = 3.041968485461895
 ****** Running (core2) approx ******
 	 node with argmax{c(12)} = 4.198582683870493
 ---------------------out.arenas-jazz-new-------------------------- 
 Reading graph from edges list file out.arenas-jazz-new
 	 G.n: 198	 G.m: 2742
-	 node with argmax{c(30)} = 8.862263688810842
+	 node with argmax{c(30)} = 8.921554644875023
 ****** Running (core2) approx ******
-	 node with argmax{c(30)} = 11.744707996740885
+	 node with argmax{c(2)} = 11.61717245178984
 ---------------------out.maayan-vidal-------------------------- 
 Reading graph from edges list file out.maayan-vidal
 	 G.n: 2783	 G.m: 6007
-WARNING: contracted graph should be a tree! 
-	 node with argmax{c(288)} = 1.334912109237655
-****** Running (core2) approx ******
-	 node with argmax{c(288)} = 2.7287414020448306
----------------------out.opsahl-powergrid-------------------------- 
-Reading graph from edges list file out.opsahl-powergrid
-	 G.n: 4941	 G.m: 6594
+	 Locally: node with argmin{c(288)} = 2050.7151712892864
+	 Link 92 = [2104.59]
+	 Link 1280 = [2851.19]
+	 Link 104 = [2307.19]
+	 Link 719 = [2300.33]
+	 Link 1249 = [2285.17]
+	 Link 1339 = [2415.29]
+	 Locally: node with argmin{c(2166)} = -17.39294790741126
+	 Link 92 = 3.836442387207515
+	 Link 1280 = 4.638499480005595
+	 Link 104 = 4.534975321994584
+	 Link 719 = 4.4668557758650715
+	 Link 1249 = 6.599866234786434
+	 Link 1339 = 4.918263871227618
+	 Locally: node with argmin{c(739)} = 1.379628809171625
+	 Link 736 = [1.49275]
