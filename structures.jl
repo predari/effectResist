@@ -2,7 +2,8 @@
 using LightGraphs
 
 mutable struct Component
-    A:: SparseMatrixCSC{Float64}
+ #   A:: SparseMatrixCSC{Float64}
+    A:: SparseMatrixCSC{Float64,Int64}
     nc::Int64
     size::Int64
     nodemap::Array{Int64,1} # size of nc Array{Int64,1}
