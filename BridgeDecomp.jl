@@ -71,8 +71,42 @@ end
 
 function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
     logw(w,"****** Running (core2) approx ******")
-    core2 = Array{Int64,1}
-    core2 = k_core(LightGraphs.Graph(A), 2)    
+    g = LightGraphs.Graph(A)
+    core2bdry = Array{Int64,1}
+    sizes = Array{Array{Int, 1}}
+    core2bdry, sizes = bridges3(g)
+    core2 = k_core(g, 2)
+    if isempty(setdiff(core2bdry,core2)) == false
+        println("WARNING: boundary nodes of core2 are not in core2!")
+    end    
+    # println(bridges)
+    # println("core2")
+    # println(core2)
+    # core2bdry = Array{Int, 1}()
+    # for i in 1:2:length(bridges)
+    #     if isempty(findin(core2,bridges[i])) == false && isempty(findin(core2,bridges[i+1])) == true
+    #         source = bridges[i]
+    #         next = bridges[i+1]
+    #     elseif isempty(findin(core2,bridges[i])) == true && isempty(findin(core2,bridges[i+1])) == false
+    #         source = bridges[i+1]
+    #         next = bridges[i]
+    #     else
+    #         continue;
+    #     end
+    #     i :: Int64 = 1
+    #     push!(core2bdry,source)
+    #     p, d = bfs_edge_subtree2(g,source,next)
+    #     println(source," ", next, " ",d)
+    #     cntr = zeros(Int64, maximum(d))
+    #     cntr = count2(d,length(d))
+    #     sizes[i] = [];
+    #     for j in 1:length(cntr)
+    #         push!(sizes[i], cntr[j])
+    #     end
+    #     i += 1
+    # end
+    # println("core2bdry = ",unique(core2bdry), " len=",length(unique(core2bdry)))
+    println("sizes = ",sizes, " len=",size(sizes,1))  
     u, maxcf = erJLT(A[core2,core2],L[core2,core2])
     logw(w,"\t node with argmax{c(", core2[u], ")} = ", maxcf)
     return u
@@ -668,12 +702,14 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             t = time()
             c.distances = localApprox(c, w)
             println("calculate component $idx (", c.nc, ") time:", time() - t, "(s)")
+            println(sum(c.distances,1))
             #c.distances = sum(c.distances,2)
             #cf = calculateCF(c.distances, n, c.nc)
             #logw(w,"\t In comp node with argmax{c(", c.nodemap[indmax(cf)], ")} = ", maximum(cf))
             #t = time()
-            #LinvDistanceLinks(c)
-            #println("calculate only link er time:", time() - t, "(s)")       
+            #er = LinvDistanceLinks2(c)
+            #println("calculate only link er time:", time() - t, "(s)")
+            #println(er)
         end
          
         t = time()
@@ -755,11 +791,95 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     A, L = sparseAdja(G)
 #    @time  max = approx(A,L,w)
 #    @time max = exact(G,w)
-    @time cfcAccelerate(A, w, 25)
+#    @time cfcAccelerate(A, w, 25)
     #    @time cfcAccelerate(A, w)
     @time approxcore2(A, L, w)
-  #  exit()
+    exit()
 end
+
+
+
+# function approx(A, L, k, stretch, flag, w = open("log.txt", "w")) #v-
+#     n = A.n
+#     ans = zeros(2,1)
+#     t = time()
+#     rank = zeros(Float64,k,n)
+#     L
+#     #logw(w,"\t k=1 starts")
+#     start_time=time()
+
+#     t=time()
+#     Ldele = LinvdiagSS(A;JLfac=20)
+#    # logw(w,"Find 1st u with argmax{c(u)}")
+#    # logw(w,"Ldele: ")
+#    # print(Ldele)
+#     # logw(w,"LaplSolve total time: ",time()-t, " (s)")
+    
+#     u = indmin(Ldele)
+#     #rank[1] = u
+#     sl = sortperm(Ldele)
+#     logw(w,"\t node ranking (min -> max):", sl[1:10])
+#     sv = sort(Ldele)
+#     logw(w,"\t cfcc ranking (min -> max):", sv[1:10])
+#     rank[1,:] = sl
+#     #logw(w,"")
+    
+#     L = delnode2(L,u,n)
+#     A = delnode2(A,u,n)
+
+#     elapsed_time = time()-start_time
+
+#     start_time = time()
+#     for dep = 1:k-1
+#         #logw(w,"\t k=",dep+1," starts")
+
+#         t=time()
+#         f = approxCholSddm(L,tol=1e-5, verbose=false);
+#         #logw(w,"\t SDDM preconditioning time: ",time()-t, " (s)")
+#         t=time()
+#         Ldele = LpartinvSS(n - dep, f;JLfac=20)
+
+#         #logw(w,"\t SDDM1 solve time: ",time()-t, " (s)")
+#         t=time()
+#         Ldele2 = Lpartinv2SS(n - dep, f, A;JLfac=20)
+#         #logw(w,"\t SDDM2 solve time: ",time()-t, " (s)")
+#         t=time()
+#         Ldele3 = Lpartinv3SS(L, f;JLfac=20)
+#         #logw(w,"\t SDDM3 solve time: ",time()-t, " (s)")
+
+#         Ldele ./= (Ldele2 .+ Ldele3)
+
+
+#         u = indmax(Ldele)
+#         sl = sortperm(Ldele[:,1], rev=true)
+#         logw(w,"\t node ranking (min -> max):", sl[1:10])
+#         sv = sort(Ldele[:,1], rev=true)
+#         logw(w,"\t cfcc ranking (min -> max):", sv[1:10])
+#         #rank[dep+1] = u
+#         x = zeros(Int64,dep)
+#         append!(sl,x)
+#         rank[dep+1,:] = sl
+        
+#         L = delnode2(L,u,n-dep)
+#         A = delnode2(A,u,n-dep)
+#     end
+
+#     elapsed_time += time()-start_time
+#     logw(w,"\t approx_elapsed_time = ",elapsed_time, "s")
+#     ans[1] = elapsed_time
+#     #logw(w,"\t calculating CFCC of the solution returned by approx greedy..")
+#     # originally (n > 30000)
+#     # the following calculation takes time. Avoid it with flag = 0
+#     if(flag == 1)    
+#         ans[2] = (n > 20000) ? (n/appxInvTrace(L;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
+#     end
+#     if (stretch != 0)
+#         ans[2] = stretch * ans[2]
+#     end
+#     logw(w,"\t CFCC achieved by approx greedy: ", ans[2])
+#     return ans, rank
+# end
+
 
 # - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]
 # - list of ext (count)=[280, 455, 756, 706, 170, 92, 57, 31, 147, 96]

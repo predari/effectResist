@@ -280,6 +280,50 @@ function LinvDistanceLinks(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200
     return cf
 end
 
+
+#### TODO: check if I have matrix vector multiplications in here and perform it directly
+function LinvDistanceLinks2(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
+    start_time = time()
+    nodes = c.nodemap
+    bdry = c.bdry
+    external = c.external
+    link = c.link
+    sz = c.linkc
+    println("size of link = ",sz)
+    n = c.nc
+
+    l3c_idx = findin(nodes, link)
+    l2c_idx = findin(nodes, bdry)
+
+    t = time()
+    f = approxCholLap(c.A,tol=1e-5);
+    println(" f = approxCholLap time: ", time()- t, "(s)")
+    ### TODO: log n or smthing else?
+    k = round(Int, JLfac*log(n))     
+    U = wtedEdgeVertexMat(c.A)
+    m = size(U,1)
+    println("m = ", m, " nnz(A) = ", nnz(c.A)/2, " n = ",size(U,1))
+    U = U[:,l3c_idx]
+    println("reduced size: m = ",size(U,1), " n = ", size(U,2))
+    er = zeros(sz)
+    
+    for i = 1:k # q 
+        r = randn(m) 
+        ur = U'*r 
+        v = zeros(sz)
+        if size(ur,1) == 1
+            v = ur
+        else
+            v = f(ur[:])
+        end
+        #println(size(v,1), " ", size(v,2))
+        er.+= v.^2/k
+    end    
+    println("calculating only for link time (without creating of matrix):", time() - t, "(s)")
+    return er
+end
+
+
 ### check for correctness!!!
 function wtedEdgeVertexMat2(mat::SparseMatrixCSC)
     ## this is only for collection of rows. not for symmetric matrices
