@@ -39,64 +39,55 @@ end
 
 #### beware of merges!
 function SamplingDistLink(c :: Component, pivots :: Array{Int64,1}, lapSolver)
-
     start_time = time()
     
     nodes = c.nodemap
-    bdry = c.bdry
     external = c.external
     link = c.link
     sz = c.linkc
     n = c.nc
-
     l3c_idx = findin(nodes, link)
-    l2c_idx = findin(nodes, bdry)
-    
-    #println("size of link = ", sz)
-    #println("local link num= ", l3c_idx)
-    
-    #t = time()
-    #f = approxCholLap(c.A,tol=1e-5);
-    #println(" f = CholLap time: ", time()- t, "(s)")
     pv = length(pivots)
-    cf = zeros(pv, sz)
-
+    cf = zeros(n)
+    # println("nodes:",nodes)
+    # println("link:",link)
+    # println("l3c_idx:",l3c_idx)
+    # println("pivots:",pivots)
+    
     b = zeros(n)
+    er = zeros(sz)
     for (idx1, u) in enumerate(l3c_idx)
         b[u] = 1.0
-        for (idx2, s) in enumerate(pivots)  
-            b[s] = -1.0            
+        for (idx2, s) in enumerate(pivots)
+            if b[s] == 0
+                b[s] = -1.0
+            end
             v = zeros(n)
             v = lapSolver(b)
-            cf[idx2,idx1] = v[u] - v[s]
+            er[idx1] += v[u] - v[s]
             b[s] = 0.0
         end
-    end   
-    return cf
+    end
+    
+    return er
 end
 
 
 
 #### beware of merges!
 function SamplingDistAll(c :: Component, pivots :: Array{Int64,1}, lapSolver)
-
     start_time = time()
-    
     nodes = c.nodemap
-    sz = c.linkc
     n = c.nc
-
-    #t = time()
-    #f = approxCholLap(c.A,tol=1e-5);
-    #println(" f = CholLap time: ", time()- t, "(s)")
     pv = length(pivots)
     cf = zeros(n)
-
-    b = zeros(n)
     for (idx1, u) in enumerate(nodes)
+        b = zeros(n)
         b[idx1] = 1.0
-        for (idx2, s) in enumerate(pivots)  
-            b[s] = -1.0            
+        for (idx2, s) in enumerate(pivots)
+            if b[s] == 0
+                b[s] = -1.0
+            end
             v = zeros(n)
             v = lapSolver(b)
             cf[idx1] += v[idx1] - v[s]

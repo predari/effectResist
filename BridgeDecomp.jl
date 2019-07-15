@@ -683,7 +683,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             c.distances = sum(c.distances,2)
             #cf = calculateCF(c.distances, n, c.nc)
             logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
-            println(c.distances)
+            #println(c.distances)
             for (idx,u) in enumerate(c.link)
                 logw(w,"\t Link $u = ", c.distances[findin(c.nodemap, u)])
                 tmp = 0
@@ -696,20 +696,27 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             end
             pivots = Array{Int64,1}
             f = approxCholLap(c.A,tol=1e-5);
+            pivots =samplePivots(c.nc, 10)
             t = time()
-            pivots =samplePivots(c.nc, 10 )
-            c.distances = SamplingDistAll(c, pivots,f)
+            c.distances = SamplingDistAll(c, pivots, f)
             println("calculate sampling time (all):", time() - t, "(s)")
             logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
-            println(c.distances)
+            #println(c.distances)
             t = time()
             ## TODO: I need to also pass f (approxCholLap) as inputs of SamplingDistLink and All
             distances = SamplingDistLink(c, pivots,f)
             println("calculate sampling time (links):", time() - t, "(s)")
-            distances = sum(distances,1)
-            println(distances)
+            #distances = sum(distances,1)
+            tmp = 0
             for (idx,u) in enumerate(c.link)
                 logw(w,"\t Link ", u," = ", distances[idx])
+                for i in c.distances
+                    if i < getindex(distances[idx])
+                        tmp +=1
+                    end
+                end
+                println("For link $u ", 100*tmp/c.nc, "% nodes have smaller effective resistance!" )
+
             end
             #cf = calculateCF(linkdistance, n, c.nc)
             #logw(w,"\t For links: node with argmax{c(", c.link[c.nodemap[indmax(cf)]], ")} = ", maximum(cf))
@@ -797,7 +804,7 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     @time cfcAccelerate(A, w, 25)
     #    @time cfcAccelerate(A, w)
     @time approxcore2(A, L, w)
-  #  exit()
+    exit()
 end
 
 # - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]
