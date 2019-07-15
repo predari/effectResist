@@ -572,8 +572,8 @@ for (idx,l) in enumerate(links)
     end
 end
 
-println("core2nodes:", length(core2nodes))
-println("sizes:", size(sizes,1))
+#println("core2nodes:", length(core2nodes))
+#println("sizes:", size(sizes,1))
 # for i in 1:length(sizes)
 #     println(sizes[i])
 # end

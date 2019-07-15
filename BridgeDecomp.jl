@@ -73,10 +73,13 @@ end
 function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
     logw(w,"****** Running (core2) approx ******")
     g = LightGraphs.Graph(A)
+    n = A.n
+    println("A.n = ",n)
     core2bdry = Array{Int64,1}
     sizes = Array{Array{Int, 1}}
     core2bdry, sizes = bridges3(g)
     core2 = k_core(g, 2)
+    println("size of core2 = ",length(core2))
     if isempty(setdiff(core2bdry,core2)) == false
         println("WARNING: boundary nodes of core2 are not in core2!")
     end    
@@ -107,10 +110,10 @@ function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, 
     #     i += 1
     # end
     # println("core2bdry = ",unique(core2bdry), " len=",length(unique(core2bdry)))
-    println("sizes = ",sizes, " len=",size(sizes,1))  
-    u, maxcf = erJLT(A[core2,core2],L[core2,core2])
-    logw(w,"\t node with argmax{c(", core2[u], ")} = ", maxcf)
-    return u
+    #println("sizes = ",sizes, " len=",size(sizes,1))
+    distances = LinvDistance(A[core2,core2], core2bdry, sizes, core2)
+    cf = calculateCF(distances, n, length(distances))
+    logw(w,"\t node with argmax{c(",  core2[indmax(cf)], ")} = ", maximum(cf))
 end
 
 # TODO: remove
@@ -283,22 +286,6 @@ end
 
 
 function extractBridges(A :: SparseMatrixCSC{Float64})
-    start_time = time()
-    B = Bridges
-    B, core1nodes = bridges(LightGraphs.Graph(A))
-    #println(core1nodes)
-    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
-    println(100*length(B.edges)/A.n, "% nodes are core2.")
-    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
-    println( 100*length(core1nodes)/(A.n), "% nodes are core1.")
-    println("finding bridges time: ", time() - start_time, "(s)")
-    t = time()
-    A  = removeBridges(A, B, core1nodes)
-    println("remove bridges time: ", time()- t, "(s)")
-    return A,B
-end
-### testing function
-function extractBridges2(A :: SparseMatrixCSC{Float64})
     start_time = time()
     B = Bridges
     B, core1nodes = bridges2(LightGraphs.Graph(A))
@@ -566,7 +553,7 @@ end
 function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     start_time = time()
     n = A.n
-    computeCore2Bridges(A)
+    #computeCore2Bridges(A)
     B = Bridges
     A, B = extractBridges(A)
     t = time()
@@ -648,7 +635,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
     start_time = time()
     n = A.n
     B = Bridges
-    A, B = extractBridges2(A)
+    A, B = extractBridges(A)
     t = time()
     C = Array{Component,1}
     C = buildComponents(A, B)
@@ -836,9 +823,10 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     A, L = sparseAdja(G)
 #    @time  max = approx(A,L,w)
 #    @time max = exact(G,w)
-#    @time cfcAccelerate(A, w, 25)
-    #    @time cfcAccelerate(A, w)
+#    @time cfcAccelerate(A, w, 25)    
     @time approxcore2(A, L, w)
+    A, L = sparseAdja(G)
+    @time cfcAccelerate(A, w)    
     exit()
 end
 

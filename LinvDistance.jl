@@ -242,28 +242,19 @@ end
 
 
 
+function LinvDistance(A::SparseMatrixCSC{Float64}, bdry::Array{Int64,1},  external :: Array{Array{Int, 1}, 1}, nodes::Array{Int64,1} ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
 
-
-
-
-
-function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::Int64 ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
-    if 0 in bdryc
-        println("Error: node index cannot be zero!");
-        exit(0)
-    end
-    f = approxCholLap(a,tol=1e-5);
-    n = size(a,1)
+    start_time = time()
+    f = approxCholLap(A,tol=1e-5);
+    n = A.n
     k = round(Int, JLfac*log(n)) # number of dims for JL    
-    U = wtedEdgeVertexMat(a)
+    U = wtedEdgeVertexMat(A)
     m = size(U,1)
-
+    println("m = ", m, " nnz(A) = ", nnz(A)/2)
     er = zeros(n)
     er2 = zeros(n)
-    cf = zeros(n, bdryc + 1)
-    ## first position for d(u,v not in bdry). For d(u,bdry)
-    ## position in cf is the same as in the bdry array
-
+    cf = zeros(n)
+    
     for i = 1:k # q 
         r = randn(m) 
         ur = U'*r 
@@ -273,26 +264,20 @@ function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bdryc::
         er2.+= v.^2/k
     end
 
+    t = time()
+    sumer = sum(er)    
     sumer2 = sum(er2)
-    sumer = sum(er)
-
-    ## TODO: change to: for (idx, u) in enumerate(bdry)
-
-    for (idx, u) in enumerate(bdry)
-        #println("$idx $u")
-        findin()
-        cf[u,1] = sumer2 + n*er2[u] -2er[u]*sumer
-        for i in 1:n
-            cf[i,idx] = er2[i] + er2[u] -2er[i]*er[u]
-        end
-    end
+    cf[:,1] .= (n)*er2 + sumer2 .-2er*sumer
     
-    sumdeler2 = sum(delextnode(er2, bdry, bdryc))
-    sumdeler = sum(delextnode(er, bdry, bdryc))
-    for i in 1:n
-        if (i in bdry) == false
-            cf[i,1] = sumdeler2 + (n-1)*er2[i] -2er[i]*sumdeler
+    l2c_idx = findin(nodes, bdry)
+    for (idx, v) in enumerate(l2c_idx)
+        m1 :: Int64 = 0
+        m2 :: Int64 = 0
+        for (i, ex) in enumerate(external[idx])
+            m1 += ex 
+            m2 += i*ex
         end
+        cf[:,1] = cf[:,1] .+ (er2 + er2[v] .-2er*er[v]) * m1 + m2
     end
     return cf
 end
@@ -546,77 +531,5 @@ function wtedEdgeVertexMat2(mat::SparseMatrixCSC)
     n = size(mat)[2] 
     v = av.^(1/2)
     return sparse(collect(1:m),ai,v,m,n) - sparse(collect(1:m),aj,v,m,n)
-end
-
-
-
-function LinvDistance(a::SparseMatrixCSC{Float64}, bdry::Array{Int64,1}, bsize:: Int64, nodes::Array{Int64,1} ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
-    if 0 in bdry
-        println("Error: node index cannot be zero!");
-        exit(0)
-    end
-    f = approxCholLap(a,tol=1e-5);
-    n = size(a,1)
-    k = round(Int, JLfac*log(n)) # number of dims for JL    
-    U = wtedEdgeVertexMat(a)
-    m = size(U,1)
-    println(bdry)
-    println(n)
-    er = zeros(n)
-    er2 = zeros(n)
-    cf = zeros(n, bsize + 1)
-    ## first position for d(u,v not in bdry). For d(u,bdry)
-    ## position in cf is the same as in the bdry array
-
-    for i = 1:k # q 
-        r = randn(m) 
-        ur = U'*r 
-        v = zeros(n)
-        v = f(ur[:])
-        er.+= v./k
-        er2.+= v.^2/k
-    end
-
-    println("old er2", er2)
-    sumer2 = sum(er2)
-    sumer = sum(er)
-    println("size er2: ",size(er2,1))
-    ## TODO: change to: for (idx, u) in enumerate(bdry)
-    lu_array = Array{Int64,1}(bsize)
-    for (idx, u) in enumerate(bdry)
-        tmp = findin(nodes, u)
-        lu = tmp[1] ## TODO: why I need to convert
-        println("idx:$idx global-u:$u")
-        lu_array[idx] = lu
-        #cf[lu, 1] = sumer2 + n*er2[lu] -2er[lu]*sumer
-        println("cf of local-link $lu:",cf[lu,1])
-        for i in 1:n
-            cf[i, idx + 1] = er2[i] + er2[lu] -2er[i]*er[lu]
-        end
-        ## or remove node u from er2 and er here already
-        ## no need to store in this case.
-    end
-    println("Bdry nodes (local numb):", lu_array)
-    # sumdeler2 = sum(er2) #delextnode(er2, lu_array, bsize)
-    # sumdeler = sum(er2) #delextnode(er, lu_array, bsize)
-
-    for i in lu_array
-        sumer = sumer -er[i]
-        sumer2 = sumer2 -er2[i]
-    end
-#    println("new er2", ll)
-#    println("old er2", er2)
-#    sumdeler2 = sum(ll)
-#    sumdeler = sum(delextnode(er, lu_array, bsize))
-#    if (n - bsize) != size(ll,1)
-#        println(n - bsize, size(ll,1))
-#        println("ERROR: something is wrong!!")
-#    end
-    for i in 1:n
-        #if (i in lu_array) == false
-            # (n-1) before
-            cf[i,1] = sumer2 + (n-bsize)*er2[i] -2er[i]*sumer
-     end
-    return cf
 end
 
