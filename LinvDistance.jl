@@ -4,8 +4,11 @@ using LightGraphs
 using StatsBase
 
 function LinvDistance(a::SparseMatrixCSC{Float64}, extnode::Integer; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
-    f = approxCholLap(a,tol=1e-5);
     n = size(a,1)
+    if n == 1
+        return zeros(n,2)
+    end
+    f = approxCholLap(a,tol=1e-5);
     k = round(Int, JLfac*log(n)) # number of dims for JL
     U = wtedEdgeVertexMat(a)
     m = size(U,1)
@@ -40,12 +43,16 @@ end
 #### beware of merges!
 function SamplingDistLink(c :: Component, pivots :: Array{Int64,1}, lapSolver)
     start_time = time()
-    
+    n = c.nc
+    sz = c.linkc
+    if n == 1
+        return zeros(sz)
+    end
     nodes = c.nodemap
     external = c.external
     link = c.link
-    sz = c.linkc
-    n = c.nc
+
+
     l3c_idx = findin(nodes, link)
     pv = length(pivots)
     cf = zeros(n)
@@ -77,8 +84,11 @@ end
 #### beware of merges!
 function SamplingDistAll(c :: Component, pivots :: Array{Int64,1}, lapSolver)
     start_time = time()
-    nodes = c.nodemap
     n = c.nc
+        if n == 1
+        return zeros(n)
+    end
+    nodes = c.nodemap
     pv = length(pivots)
     cf = zeros(n)
     for (idx1, u) in enumerate(nodes)
@@ -103,13 +113,15 @@ end
 function SamplingDistLink(c :: Component, pv :: Int64 ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
 
     start_time = time()
-    
+    sz = c.linkc
+    n = c.nc
+    if n == 1
+        return zeros(pv, sz)
+    end    
     nodes = c.nodemap
     bdry = c.bdry
     external = c.external
     link = c.link
-    sz = c.linkc
-    n = c.nc
 
     l3c_idx = findin(nodes, link)
     l2c_idx = findin(nodes, bdry)
@@ -145,11 +157,12 @@ end
 function SamplingDistAll(c :: Component, pv :: Int64 ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
 
     start_time = time()
-    
-    nodes = c.nodemap
     sz = c.linkc
     n = c.nc
-
+    if n == 1
+        return zeros(n)
+    end
+    nodes = c.nodemap
     t = time()
     f = approxCholLap(c.A,tol=1e-5);
     println(" f = CholLap time: ", time()- t, "(s)")
@@ -186,6 +199,10 @@ function LinksLinvDist(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     link = c.link
     sz = c.linkc
     n = c.nc
+    if n == 1
+        return zeros(n,sz+1)
+    end
+    
     println(nodes)
     println(link)
 
@@ -243,10 +260,13 @@ end
 
 
 function LinvDistance(A::SparseMatrixCSC{Float64}, bdry::Array{Int64,1},  external :: Array{Array{Int, 1}, 1}, nodes::Array{Int64,1} ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
-
     start_time = time()
-    f = approxCholLap(A,tol=1e-5);
     n = A.n
+    if n == 1
+        return zeros(n)
+    end
+    f = approxCholLap(A,tol=1e-5);
+
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(A)
     m = size(U,1)
@@ -285,15 +305,19 @@ end
 #### TODO: check if I have matrix vector multiplications in here and perform it directly
 function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     start_time = time()
+
+    sz = c.linkc
+    n = c.nc
+    if n == 1
+        return zeros(n,sz+1)
+    end
     f = approxCholLap(c.A,tol=1e-5);
 
     nodes = c.nodemap
     bdry = c.bdry
     external = c.external
     link = c.link
-    sz = c.linkc
 
-    n = c.nc
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(c.A)
     m = size(U,1)
@@ -380,6 +404,10 @@ function LinvDistanceLinks(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200
     link = c.link
     sz = c.linkc
     n = c.nc
+    if n == 1
+        return zeros(n,sz+1)
+    end
+
     # rows = rowvals(c.A)
     # vals = nonzeros(c.A)
     # for u in 1:n
@@ -483,7 +511,10 @@ function LinvDistanceLinks2(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=20
     sz = c.linkc
     println("size of link = ",sz)
     n = c.nc
-
+    if n == 1
+        return zeros(sz)
+    end
+    
     l3c_idx = findin(nodes, link)
     l2c_idx = findin(nodes, bdry)
 

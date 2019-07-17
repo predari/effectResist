@@ -190,6 +190,21 @@ function delnode2(L, v, t)
 end
 
 
+function localApproxTest(G, bridges, w :: IOStream)
+    A =  sparseAdja2(G)
+    return calculateCF(localApprox(A, 0, w), A.n)
+end
+
+function locateBridges(A :: SparseMatrixCSC{Float64})
+    edges = bridges(LightGraphs.Graph(A))
+    #println("Time of finding bridges!")
+    #nedges = size(edges,1)
+    #println((100*nedges)/(G.m), "% edges are bridges.")
+    A, extnodes = removeBridges(A, edges, nedges)
+    B = Bridges(edges, extnodes)
+    return A,B
+end
+
 function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs :: Integer)
     #nodes =  Array{Int64,1}()
     nodes =  Set{Int64}()
@@ -209,6 +224,7 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
     ### A whereever is needed.
     ### A = delnodes(A, B.core1nodes)
     #println(full(A))
+    
     j :: Int64 = 0
     rows = rowvals(A)
     ## or   colptr = mat.colptr , rowval = mat.rowval
@@ -226,29 +242,21 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
         A[B.edges[i],B.edges[i+1]] = 0.0
         A[B.edges[i+1],B.edges[i]] = 0.0
     end
-    return dropzeros!(A)
+    ## dropzeros! is necessary
+    dropzeros!(A)
+    println("size of A after dropzeros! = ",size(A,1)," ",nnz(A))
+    return A
 end
 
 
 function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Set{Int64})
-    ### delnodes creates a new array so the numbering
-    ### is reevaluated. I want the numbering to stay the
-    ### same, so I will just write zeros ontop of A whereever is needed.
-    ### A = delnodes(A, B.core1nodes)
-    #println(full(A))
     j = Int64
     rows = rowvals(A)
-    ## or   colptr = mat.colptr , rowval = mat.rowval
-    #vals = nonzeros(A)
     for u in core1nodes
         j = nzrange(A, u)[1]
         A[u,rows[j]] = 0.0
         A[rows[j],u] = 0.0
     end
-    # for e in B.edges        
-    #     A[e.src,e.dst] = 0.0
-    #     A[e.dst,e.src] = 0.0
-    # end
     for i in 1:2:length(B.edges)
         A[B.edges[i],B.edges[i+1]] = 0.0
         A[B.edges[i+1],B.edges[i]] = 0.0
@@ -256,18 +264,22 @@ function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :
     return dropzeros!(A)
 end
 
-function localApproxTest(G, bridges, w :: IOStream)
-    A =  sparseAdja2(G)
-    return calculateCF(localApprox(A, 0, w), A.n)
-end
-
-function locateBridges(A :: SparseMatrixCSC{Float64})
-    edges = bridges(LightGraphs.Graph(A))
-    #println("Time of finding bridges!")
-    #nedges = size(edges,1)
-    #println((100*nedges)/(G.m), "% edges are bridges.")
-    A, extnodes = removeBridges(A, edges, nedges)
-    B = Bridges(edges, extnodes)
+function extractBridges(A :: SparseMatrixCSC{Float64})
+    start_time = time()
+    B = Bridges
+    B, core1nodes = bridges2(LightGraphs.Graph(A))
+    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
+    println(100*length(B.edges)/A.n, "% nodes are core2.")
+    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
+    println( 100*length(core1nodes)/(A.n), "% nodes are core1.")
+    println("finding bridges time: ", time() - start_time, "(s)")
+    t = time()
+    println("after remove bridges size of A = ",size(A,1), " ", nnz(A))
+    A  = removeBridges(A, B, core1nodes)
+    #println("length of core1nodes = ",length(core1nodes), " ", core1nodes)
+    println("bridges ", B.edges)
+    println("after remove bridges size of A = ",size(A,1), " ", nnz(A))
+    println("remove bridges time: ", time()- t, "(s)")
     return A,B
 end
 
@@ -284,26 +296,11 @@ function computeCore2Bridges(A :: SparseMatrixCSC{Float64})
     println((100*Bridgescore2)/(nnz(A)/2), "% edges are bridges type core2.")
 end
 
-
-function extractBridges(A :: SparseMatrixCSC{Float64})
-    start_time = time()
-    B = Bridges
-    B, core1nodes = bridges2(LightGraphs.Graph(A))
-    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
-    println(100*length(B.edges)/A.n, "% nodes are core2.")
-    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
-    println( 100*length(core1nodes)/(A.n), "% nodes are core1.")
-    println("finding bridges time: ", time() - start_time, "(s)")
-    t = time()
-    A  = removeBridges(A, B, core1nodes)
-    println("remove bridges time: ", time()- t, "(s)")
-    return A,B
-end
-
 function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     start_time = time()
-    ##### TODO: here the components should be 3 in total!! 
-    cmps, map, ncmps = allComp(A)
+    ##### TODO: here the components of size one that are bridges should be kept!! 
+    #cmps, map, ncmps = allComp(A)
+    cmps, map, ncmps = allComp(A, B.edges)
     # println(length(cmps))
     # for i in 1:length(cmps)
     #     println(length(map[i]))
@@ -366,6 +363,7 @@ function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C
         cA[i,i+1] .= 1.0
         cA[i+1,i] .= 1.0
     end
+    println(full(cA))
     ### TODO:: address the fact that there are components with size of 1.
     ### if this is not addressed, then we have edges that are not bridges
     ### for instance 1--C0---25, 1--C'0---4, which after the strip function
@@ -376,9 +374,9 @@ function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C
     #nc = length(C)
     for i in 1: nc
         idx = findin(cmplist,i)
-        #println("i $i ", length(unique(idx)))
+        println("i $i ", length(unique(idx)))
         
-        if length(idx) > 1
+        if length(idx) > 1 && C[i].nc > 1
             c = C[i]
             #println("component:",i)
             #println(idx, edges[idx])
@@ -404,12 +402,15 @@ function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C
         end
         #println(cA)
     end
+    
     for i in 1:n
         if cA[i,i] != 0.0
             cA[i,i] = 0.0
         end
     end
     dropzeros!(cA)
+    println(full(cA))
+    
     if !isConnected(cA)
         logw(w,"WARNING: contracted graph should be connected! ");
         #exit()
@@ -661,13 +662,13 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
     C = buildComponents(A, B)
     count = length(C)
     println("number of components is = ", count)
-    # println("Bridges:")
-    # printBridges(B)
-    # println("Components: $count")
-    # for (idx, c) in enumerate(C)
-    #     print("$idx")
-    #     printComponent(c)
-    # end
+    println("Bridges:")
+    printBridges(B)
+    println("Components: $count")
+    for (idx, c) in enumerate(C)
+        print("$idx")
+        printComponent(c)
+    end
     println("maxcf = $maxcf")
     # for c in C
     #     print(c.size,"-",length(c.nodemap)," ")
@@ -737,51 +738,58 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             end
             pivots = Array{Int64,1}
             pv :: Int64 = 10
-            #if c.nc < pv
-            #    continue
-            #else
-
+            if c.nc < pv
+                println("WARNING: number of pivots is the same as the subgraph.")
+                pv = c.nc
+            end
+            if c.nc > 1
                 f = approxCholLap(c.A,tol=1e-5);
-                pivots =samplePivots(c.nc, pv)
-                t = time()
-                c.distances = SamplingDistAll(c, pivots, f)
-                println("calculate sampling time (all):", time() - t, "(s)")
-                #logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
-                #println(c.distances)
-                t = time()
-                ## TODO: I need to also pass f (approxCholLap) as inputs of SamplingDistLink and All
-                distances = SamplingDistLink(c, pivots,f)
-                println("calculate sampling time (links):", time() - t, "(s)")
-                #distances = sum(distances,1)
-                tmp = 0
-                for (idx,u) in enumerate(c.link)
-                    #logw(w,"\t Link ", u," = ", distances[idx])
-                    for i in c.distances
-                        if i < getindex(distances[idx])
-                            tmp +=1
-                        end
+            else
+                f = nothing
+            end
+            pivots =samplePivots(c.nc, pv)
+            t = time()
+            c.distances = SamplingDistAll(c, pivots, f)
+            println("calculate sampling time (all):", time() - t, "(s)")
+            #logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
+            #println(c.distances)
+            t = time()
+            ## TODO: I need to also pass f (approxCholLap) as inputs of SamplingDistLink and All
+            distances = SamplingDistLink(c, pivots,f)
+            println("calculate sampling time (links):", time() - t, "(s)")
+            #distances = sum(distances,1)
+            tmp = 0
+            for (idx,u) in enumerate(c.link)
+                #logw(w,"\t Link ", u," = ", distances[idx])
+                for i in c.distances
+                    if i < getindex(distances[idx])
+                        tmp +=1
                     end
-                    #println("For link $u ", 100*tmp/c.nc, "% nodes have smaller effective resistance!" )
-                    
                 end
-                #cf = calculateCF(linkdistance, n, c.nc)
-                #logw(w,"\t For links: node with argmax{c(", c.link[c.nodemap[indmax(cf)]], ")} = ", maximum(cf))
+                #println("For link $u ", 100*tmp/c.nc, "% nodes have smaller effective resistance!" )
+                    
+            end
+            #cf = calculateCF(linkdistance, n, c.nc)
+            #logw(w,"\t For links: node with argmax{c(", c.link[c.nodemap[indmax(cf)]], ")} = ", maximum(cf))
             #end
         end
 
         t = time()
-        # println("components:", B.comp)
-        # println("edges:", B.edges)
+        #println("components:", B.comp)
+        #println("edges:", B.edges)
         ## strip core1nodes in order to remove internal paths
-        newcomp, newedges = stripcore1nodes(B.comp,B.edges)
+        #newcomp, newedges = stripcore1nodes(B.comp,B.edges)
         #println("After striping nodes1!")
-        #println("components:", newcomp)
-        #println("edges:", newedges)
+        newcomp =B.comp
+        newedges =B.edges
+        println("components:", newcomp)
+        println("edges:", newedges)
         n :: Int64 = length(newcomp)
         # following line: improves perf? TODO: check
         cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+        return
         cA = contractAdjGraph(newedges, newcomp, C, count)
-        #println(cA)
+        #println(full(cA))
         # following 2 lines: improves perf? TODO: check
         dist2 = zeros(Float64,count,count)
         path2 = zeros(Int64,count,count)
@@ -823,16 +831,20 @@ logw(w, "-------------------------------------------------------- ")
 # Line = TestGraph(21, 54)
 # println(Line)
 # A, L = sparseAdja(Line)
-# @time approx(A,L,w)
+# #@time approx(A,L,w)
 # #Line = Components3Graph(8, 22)
-# Line = TestGraph(21, 54)
+# #Line = TestGraph(21, 54)
 # #Line = TestGraph(18, 48)
 # #Line = TestGraph(20, 54)
+# #println(Line)
+# #A, L = sparseAdja(Line)
+
+# #@time max = exact(Line,w)
+
+# Line = TestGraph(21, 54)
 # println(Line)
 # A, L = sparseAdja(Line)
-
-# @time max = exact(Line,w)
-# @time cfcAccelerate(A, w)
+# @time cfcAccelerate(A, w, 25)
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -849,13 +861,17 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
 #    @time  max = approx(A,L,w)
 #    @time max = exact(G,w)
 #    @time cfcAccelerate(A, w, 25)    
-    @time approxcore2(A, L, w)
-    A, L = sparseAdja(G)
+#    @time approxcore2(A, L, w)
+#    A, L = sparseAdja(G)
     @time cfcAccelerate(A, w, 25)    
-   
+    exit()
 end
 
 # - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]
 # - list of ext (count)=[280, 455, 756, 706, 170, 92, 57, 31, 147, 96]
 # - list of core3nodes=[2134, 2075, 2075, 289, 1135, 1020, 1020, 1000, 2792, 2384, 2384, 211]
 # - comp of each node=[2, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+
+# - list of core2nodes=[1, 289, 2134, 2147, 1000, 999, 211, 290]
+# - list of ext (count)=Array{Int64,1}[[280], [757], [32], [147], [93, 1, 56], [170], [456, 1, 95], [706]]
+# - list of core3nodes=[2134, 2075, 289, 2075]
