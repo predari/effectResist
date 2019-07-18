@@ -1,4 +1,8 @@
+include("structures.jl")
 using Laplacians
+using DataStructures ## for SortedSets
+
+
 
 ## return the numbering of nodes for each component
 function nodesInComps(compvec::Vector{Ti}) where Ti
@@ -108,3 +112,143 @@ function allComp(mat:: SparseMatrixCSC{Tv,Ti}, bridges :: Array{Ti,1}) where {Tv
     end
     return comps, nodes, nc
 end
+
+
+function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
+    start_time = time()
+    cmps, map, ncmps = allComp(A, B.edges)
+    println("finding components time: ", time() - start_time, "(s)")
+    t = time()
+    C = Array{Component,1}(ncmps)
+    maxc = 0;
+    #### Is : for i = eachindex(a) faster than for i = 1:n?
+    for i in eachindex(cmps) 
+        bdry = collect(intersect(DataStructures.SortedSet(B.core2nodes), Set(map[i])))
+        # following command is faster but doesn't preserve order
+        # bdry = collect(intersect(Set(B.core2nodes), Set(map[i])))
+        # TODO: check if intersect is still that bad with (sorted) arrays (compared to Sets)
+        # link array doesn't need to be sorted.
+        link = collect(intersect(Set(B.edges), Set(map[i])))
+        index = findin(B.core2nodes,bdry)
+        #println(B.ext[index])
+        tcount :: Int64 = 0
+        for j in B.ext[index]
+            for k in j
+                tcount += k
+            end
+        end
+        B.comp[findin(B.edges,link)] = i 
+        C[i] = Component(cmps[i],cmps[i].n,cmps[i].n + tcount, map[i],bdry,link,length(link),
+                         zeros(cmps[i].n,length(link)), B.ext[index])
+        if cmps[i].n >= maxc
+            maxc = i
+        end
+    end
+    println("building structure components time: ", time() - t, "(s)")
+    return C
+end
+
+function compRealSizes(C :: Array{Component,1}, nc :: Int64)
+    sizes = zeros(Int64,nc)
+    for i in 1:nc
+        externalNodes = 0
+        for j in C[i].external
+            for k in j
+                externalNodes += k
+            end
+        end
+        sizes[i] = C[i].nc + externalNodes
+    end
+    return sizes
+end
+
+
+#########   TODO: create checkDistances(dist1 :: Array{Float64,1},dist2 :: Array{Float64,1})
+########    to check at which extend distances are similar.
+
+
+function stripcore1nodes(comp  :: Array{Int64,1} , core3nodes :: Array{Int64,1})
+    if length(comp) != length(core3nodes)
+        println("WARNING: length of node-vector and their component index vector should be the same")
+    end
+    pst = []
+    for i in eachindex(comp)
+        if comp[i] == 0
+            push!(pst,i)
+        end
+    end
+    deleteat!(comp,pst)
+    deleteat!(core3nodes,pst)
+    return comp, core3nodes
+end
+
+
+function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C :: Array{Component,1}, nc :: Int64)
+    n = length(cmplist)
+    cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+    for i in 1:2:length(edges)
+        cA[i,i+1] .= 1.0
+        cA[i+1,i] .= 1.0
+    end
+    ### TODO:: address the fact that there are components with size of 1.
+    ### if this is not addressed, then we have edges that are not bridges
+    ### for instance 1--C0---25, 1--C'0---4, which after the strip function
+    ### will result to 1--25 and 1--4, which is not allowed and creates
+    ### non unique edge indexes that result in different of length
+    ### between idx and lidx2, lidx1 !
+    #println(cA)
+    #nc = length(C)
+    for i in 1: nc
+        idx = findin(cmplist,i)
+        #println("i $i ", length(unique(idx)))
+        
+        if length(idx) > 1
+            c = C[i]
+            if c.nc > 1
+                #println("component:",i)
+                #println(idx," ", edges[idx])
+                #println("c.link size = ", length(c.link))
+                #println(edges[idx])
+                #println(c.link)
+                #println(setdiff(c.link,edges[idx]))
+                lidx1 = findin(c.link, edges[idx])
+                #println(" ", length(lidx1))
+                lidx2 = findin(c.nodemap, edges[idx])
+                lidx1 += 1
+                #println(lidx1, lidx2)
+                dist = c.distances[lidx2,lidx1]
+                #println(lidx2)
+                #println(lidx1)
+                #println("idx = ",  " len= ", length(idx), " ", length(idx))
+                #println("dist = ", " len= ", size(dist,1), " ",size(dist,2))
+                #len = length(idx)
+                #random = ones(len,len)*0.5
+                #cA[idx,idx] = random
+                ### following is the correct line!!!!
+                cA[idx,idx] = dist
+            else
+                ##### TODO: patch!!!!! change!!
+                logw(w,"WARNING: problem with components with 1 node! ");
+                cA[idx,idx] = 0.0000001
+            end
+        end
+        #println(cA)
+    end
+    ### need to clean causalties because of cA[idx,idx] = dist
+    for i in 1:n
+        if cA[i,i] != 0.0
+            cA[i,i] = 0.0
+        end
+    end
+    dropzeros!(cA)
+    
+    if !Laplacians.isConnected(cA)
+        logw(w,"WARNING: contracted graph should be connected! ");
+        exit()
+    end
+    if !(isConnected(A) && nnz(A) == 2*(A.n-1))
+        logw(w,"WARNING: contracted graph should be a tree! ");
+    end
+    return cA
+end
+

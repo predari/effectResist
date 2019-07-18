@@ -171,6 +171,7 @@ function intHeapSet!(nh::intHeap, node::Tind, key::Tkey) where {Tkey,Tind}
   end
 end # intHeapSet!
 
+#### Laplacians code. I don't use it actually
 """Computes the lenghts of shortest paths from `start`.
 Returns both a vector of the lenghts, and the parent array
 in the shortest path tree.
@@ -280,3 +281,26 @@ function shortestPaths(mat::SparseMatrixCSC{Tv,Ti}, start::Ti, comp:: Array{Int6
     return distances, path
 
 end # shortestPaths
+
+
+function shortestContractPaths(cA :: SparseMatrixCSC{Float64}, nc :: Int64, edges :: Array{Int64,1}, cmplist :: Array{Int64,1})
+    n = length(cmplist)
+    dist2 = zeros(Float64,nc,nc)
+    path2 = zeros(Int64,nc,nc)
+    for i in 1:n
+        x = cmplist[i]
+        if sum(dist2[x,:]) != 0.0
+            tmp , path =  shortestPaths(cA, i, cmplist, edges, nc)
+            for j in 1:nc
+                dist2[x,j] = dist2[x,j] < tmp[j] ? dist2[x,j] : tmp[j] 
+            end
+        else
+            dist2[x,:], path = shortestPaths(cA, i, cmplist, edges, nc)
+        end
+        if path2[x,1] == 0
+            path2[x,:] = path
+        end
+    end
+    return dist2, path2
+end
+
