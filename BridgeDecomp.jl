@@ -363,7 +363,6 @@ function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C
         cA[i,i+1] .= 1.0
         cA[i+1,i] .= 1.0
     end
-    println(full(cA))
     ### TODO:: address the fact that there are components with size of 1.
     ### if this is not addressed, then we have edges that are not bridges
     ### for instance 1--C0---25, 1--C'0---4, which after the strip function
@@ -374,46 +373,51 @@ function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C
     #nc = length(C)
     for i in 1: nc
         idx = findin(cmplist,i)
-        println("i $i ", length(unique(idx)))
+        #println("i $i ", length(unique(idx)))
         
-        if length(idx) > 1 && C[i].nc > 1
+        if length(idx) > 1
             c = C[i]
-            #println("component:",i)
-            #println(idx, edges[idx])
-            #println("c.link size = ", length(c.link))
-            #println(edges[idx])
-            #println(c.link)
-            #println(setdiff(c.link,edges[idx]))
-            lidx1 = findin(c.link, edges[idx])
-            #println(" ", length(lidx1))
-            lidx2 = findin(c.nodemap, edges[idx])
-            lidx1 += 1
-            #println(lidx1, lidx2)
-            dist = c.distances[lidx2,lidx1]
-            #println(lidx2)
-            #println(lidx1)
-            #println("idx = ",  " len= ", length(idx), " ", length(idx))
-            #println("dist = ", " len= ", size(dist,1), " ",size(dist,2))
-            len = length(idx)
-            random = ones(len,len)*0.5
-            cA[idx,idx] = random
-            ### following is the correct line!!!!
-            ### cA[idx,idx] = dist
+            if c.nc > 1
+                #println("component:",i)
+                #println(idx," ", edges[idx])
+                #println("c.link size = ", length(c.link))
+                #println(edges[idx])
+                #println(c.link)
+                #println(setdiff(c.link,edges[idx]))
+                lidx1 = findin(c.link, edges[idx])
+                #println(" ", length(lidx1))
+                lidx2 = findin(c.nodemap, edges[idx])
+                lidx1 += 1
+                #println(lidx1, lidx2)
+                dist = c.distances[lidx2,lidx1]
+                #println(lidx2)
+                #println(lidx1)
+                #println("idx = ",  " len= ", length(idx), " ", length(idx))
+                #println("dist = ", " len= ", size(dist,1), " ",size(dist,2))
+                #len = length(idx)
+                #random = ones(len,len)*0.5
+                #cA[idx,idx] = random
+                ### following is the correct line!!!!
+                cA[idx,idx] = dist
+            else
+                ##### TODO: patch!!!!! change!!
+                logw(w,"WARNING: problem with components with 1 node! ");
+                cA[idx,idx] = 0.0000001
+            end
         end
         #println(cA)
     end
-    
+    ### need to clean causalties because of cA[idx,idx] = dist
     for i in 1:n
         if cA[i,i] != 0.0
             cA[i,i] = 0.0
         end
     end
     dropzeros!(cA)
-    println(full(cA))
     
     if !isConnected(cA)
         logw(w,"WARNING: contracted graph should be connected! ");
-        #exit()
+        exit()
     end
     if !isTree(cA)
         logw(w,"WARNING: contracted graph should be a tree! ");
@@ -662,14 +666,14 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
     C = buildComponents(A, B)
     count = length(C)
     println("number of components is = ", count)
-    println("Bridges:")
-    printBridges(B)
-    println("Components: $count")
-    for (idx, c) in enumerate(C)
-        print("$idx")
-        printComponent(c)
-    end
-    println("maxcf = $maxcf")
+    # println("Bridges:")
+    # printBridges(B)
+    # println("Components: $count")
+    # for (idx, c) in enumerate(C)
+    #     print("$idx")
+    #     printComponent(c)
+    # end
+    #println("maxcf = $maxcf")
     # for c in C
     #     print(c.size,"-",length(c.nodemap)," ")
     # end
@@ -722,15 +726,15 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             c.distances = localApprox(c, w)
             println("calculate component $idx (", c.nc, ") time:", time() - t, "(s)")
             linkdistance = sum(c.distances,1)[:,2:end]
-            c.distances = sum(c.distances,2)
+            localdistances = sum(c.distances,2)
             #cf = calculateCF(c.distances, n, c.nc)
-            logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
+            logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(localdistances)], ")} = ", minimum(localdistances))
             #println(c.distances)
             for (idx,u) in enumerate(c.link)
                 #logw(w,"\t Link $u = ", c.distances[findin(c.nodemap, u)])
                 tmp = 0
                 for i in c.distances
-                    if i < getindex(c.distances[findin(c.nodemap, u)])
+                    if i < getindex(localdistances[findin(c.nodemap, u)])
                         tmp +=1
                     end
                 end
@@ -749,15 +753,11 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
             end
             pivots =samplePivots(c.nc, pv)
             t = time()
-            c.distances = SamplingDistAll(c, pivots, f)
+            SamplingDistAll(c, pivots, f)
             println("calculate sampling time (all):", time() - t, "(s)")
-            #logw(w,"\t Locally: node with argmin{c(", c.nodemap[indmin(c.distances)], ")} = ", minimum(c.distances))
-            #println(c.distances)
             t = time()
-            ## TODO: I need to also pass f (approxCholLap) as inputs of SamplingDistLink and All
             distances = SamplingDistLink(c, pivots,f)
             println("calculate sampling time (links):", time() - t, "(s)")
-            #distances = sum(distances,1)
             tmp = 0
             for (idx,u) in enumerate(c.link)
                 #logw(w,"\t Link ", u," = ", distances[idx])
@@ -769,9 +769,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
                 #println("For link $u ", 100*tmp/c.nc, "% nodes have smaller effective resistance!" )
                     
             end
-            #cf = calculateCF(linkdistance, n, c.nc)
-            #logw(w,"\t For links: node with argmax{c(", c.link[c.nodemap[indmax(cf)]], ")} = ", maximum(cf))
-            #end
         end
 
         t = time()
@@ -782,12 +779,9 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, maxcf :: Int
         #println("After striping nodes1!")
         newcomp =B.comp
         newedges =B.edges
-        println("components:", newcomp)
-        println("edges:", newedges)
         n :: Int64 = length(newcomp)
         # following line: improves perf? TODO: check
         cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
-        return
         cA = contractAdjGraph(newedges, newcomp, C, count)
         #println(full(cA))
         # following 2 lines: improves perf? TODO: check
@@ -841,10 +835,10 @@ logw(w, "-------------------------------------------------------- ")
 
 # #@time max = exact(Line,w)
 
-# Line = TestGraph(21, 54)
-# println(Line)
-# A, L = sparseAdja(Line)
-# @time cfcAccelerate(A, w, 25)
+Line = TestGraph(21, 54)
+println(Line)
+A, L = sparseAdja(Line)
+@time cfcAccelerate(A, w, 25)
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -864,7 +858,6 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
 #    @time approxcore2(A, L, w)
 #    A, L = sparseAdja(G)
     @time cfcAccelerate(A, w, 25)    
-    exit()
 end
 
 # - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]

@@ -1,8 +1,8 @@
 -------------------------------------------------------- 
+	 Locally: node with argmin{c(5)} = 12.62471045320882
+	 Locally: node with argmin{c(10)} = 1.2813690569822438
+	 Locally: node with argmin{c(16)} = 1.3396783196373117
+	 node with argmax{c(5)} = 0.7155340658346834
 ---------------------out.arenas-pgp-------------------------- 
 Reading graph from edges list file out.arenas-pgp
 	 G.n: 10680	 G.m: 24316
-****** Running (core2) approx ******
-	 node with argmax{c(183)} = 0.6257856439461943
-	 Locally: node with argmin{c(183)} = 13077.808487374923
-	 Locally: node with argmin{c(10606)} = 2.277177159329896
