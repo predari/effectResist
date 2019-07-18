@@ -23,9 +23,7 @@ julia> bridges(PathGraph(5))
 ```
 """
 
-
-
-
+###### ORIGINAL BRIDGES FUNCTION FROM LIGHTGRAPHS #######
 function bridges end
 #@traitfn
 #function bridges(g::AG::(!IsDirected)) where {T, AG<:AbstractGraph{T}}
@@ -90,8 +88,9 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     
     return bridges
 end
-# second function with different return type
 
+### old bridges function that used to calculate only core 1 connections
+### to bndr nodes.
 function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     s = Vector{Tuple{T, T, T}}()
     low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
@@ -129,12 +128,6 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
                 v_neighbors = outneighbors(g, v)
                 w = v_neighbors[wi]
                 low[v] = min(low[v], low[w]) # condition check for (v, w) being a tree-edge
-                # println("v=$v, w=$w ==>", v_neighbors, outneighbors(g, w))
-                # println(pre[v] ," < ", low[w], " ==> bridge ")
-                # if low[w] > pre[v]
-                #     push!(edges,w)
-                #     push!(edges,v)
-                # end
                 if low[w] > pre[v]
                     if length(v_neighbors) == 1
                         push!(core1nodes, v)
@@ -173,12 +166,6 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     #     c = count(x->x==u,core1neighbor);
     #     core2pairs[idx] = c;
     # end
-    # println(core1neighbor)
-    # for i in core1neighbor
-    #     if length(outneighbors(g, i)) == 2
-    #         println(i," ",length(outneighbors(g, i))," " )
-    #     end
-    # end
     t = time()
     ###### TODO: sort(unique()) or unique(sort()) ?
     ### TODO: uncomment
@@ -200,13 +187,10 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
     ### to the index of core2nodes. ## One solution is to reorder sizes
     ### or core2nodes so that they much. The other solution is to sort
     ### everything (maybe use OrderedSets). Also, I do really need to store
-    ### core2nodes and core1neighbors while searching for bridges... keep one and try to prealloc
+    ### core2nodes and core1neighbors while searching for bridges...
+    ### keep one and try to prealloc
     println("COUNT TIMING IS ",time()- t, "(s)")
 
-    # println("core1nodes", core1nodes)
-    # println("core2nodes", core2nodes)
-    # println("core2pairs", core2pairs)
-    # println("core3nodes", core3nodes)
     if length(findin(core1nodes, core2nodes)) != 0
         println("WARNING!! Problem with core2 calculation")
         exit(1)
@@ -215,26 +199,19 @@ function bridges(g::AG) where {T, AG<:AbstractGraph{T}}
         println("WARNING!! Problem with core3 calculation")
         exit(1)
     end
-    #println(core2nodes)
     B = Bridges(edges, core2nodes, sizes)
-    ### remove the creation of core3nodes!!! and call following constructor
-    #B = Bridges(edges, core2nodes, core2pairs)
-    
     return B, core1nodes
 end
 
-
+### main bridges function that is used to calculate bridges
+### the bndry nodes and all the related to bndry nodes
+### simple paths of core1 type. 
 function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
     s = Vector{Tuple{T, T, T}}()
     low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
     pre = zeros(T, nv(g)) #checks the entry time of a vertex in the DFS-stack, pre[u] = 0 if a vertex isn't visited; non-zero, otherwise
     # bridges = Edge{T}[]   #keeps record of the bridge-edges
     edges = Array{Int64,1}()
-    ### if nodes of bridges belong to terminal components,
-    ### we do not need to store the edge. Just the nodes
-    ### core1nodes = Set{T}()
-    ### core1neighbor = Array{Int64,1}()
-    ### core3nodes = Set{T}()
     m :: Int64 = 0
     tms = zeros(T, nv(g))
     degree1neighbor = Array{Int64,1}()
@@ -262,8 +239,6 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
                 v_neighbors = outneighbors(g, v)
                 w = v_neighbors[wi]
                 low[v] = min(low[v], low[w]) # condition check for (v, w) being a tree-edge
-                #println("v=$v, w=$w ==>", v_neighbors, outneighbors(g, w))
-                #println(pre[v] ," < ", low[w], " ==> bridge ")
                 if low[w] > pre[v]
                     push!(edges,w)
                     tms[w] += 1
@@ -398,7 +373,6 @@ end
 B = Bridges(bridges, core2nodes, sizes)
 println("COUNT TIMING IS ",time()- t, "(s)")
 t = time()
-#println(length(core1nodes))
 shell1nodes = Array{Int64,1}
 shell1nodes = k_shell(g, 1)
 #println(length(shell1nodes))
@@ -406,18 +380,17 @@ println("shell1time ",time()- t, "(s)")
 return B, shell1nodes
 end
 
-
+### similar to bridges2 but with different return type.
+### It is used in approxcore2 method and it only returns
+### the bdry nodes and their related paths of core1.
+### It doesn't keep track of the actual bridges between
+### components of size > 1.
 function bridges3(g::AG) where {T, AG<:AbstractGraph{T}}
     s = Vector{Tuple{T, T, T}}()
     low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
     pre = zeros(T, nv(g)) #checks the entry time of a vertex in the DFS-stack, pre[u] = 0 if a vertex isn't visited; non-zero, otherwise
     # bridges = Edge{T}[]   #keeps record of the bridge-edges
     edges = Array{Int64,1}()
-    ### if nodes of bridges belong to terminal components,
-    ### we do not need to store the edge. Just the nodes
-    ### core1nodes = Set{T}()
-    ### core1neighbor = Array{Int64,1}()
-    ### core3nodes = Set{T}()
     m :: Int64 = 0
     tms = zeros(T, nv(g))
     degree1neighbor = Array{Int64,1}()
@@ -445,8 +418,6 @@ function bridges3(g::AG) where {T, AG<:AbstractGraph{T}}
                 v_neighbors = outneighbors(g, v)
                 w = v_neighbors[wi]
                 low[v] = min(low[v], low[w]) # condition check for (v, w) being a tree-edge
-                #println("v=$v, w=$w ==>", v_neighbors, outneighbors(g, w))
-                #println(pre[v] ," < ", low[w], " ==> bridge ")
                 if low[w] > pre[v]
                     push!(edges,w)
                     tms[w] += 1
@@ -607,7 +578,8 @@ function count2( array ::  Array{Int64,1}, len :: Int64)
 end
 
 
-
+### following function is inspired by bfs_edge_subtree of lightGraphs
+### but has slightly different functionality.
 ### function to start bfs from edge (source,next)
 function bfs_edge_subtree2(g::AbstractGraph{T}, source :: Int64, next:: Int64, tms ::  Array{Int64,1} ) where T
     
@@ -711,73 +683,87 @@ function bfs_edge_subtree2(g::AbstractGraph{T}, source :: Int64, next:: Int64) w
     return path, distance
 end
 
+####################################################################
 
-
-function bfs_edge_subtree(g::AbstractGraph{T}, source :: Int64, next:: Int64) where T
-    n = nv(g)
-    visited = falses(n)
-    distance = Vector{T}()
-    path = Vector{T}()
-    cur_level = Vector{T}()
-    sizehint!(cur_level, n)
-    next_level = Vector{T}()
-    sizehint!(next_level, n)
-    visited[source] = true
-    visited[next] = true
-    push!(cur_level, next)
-    cnt :: Int64 = 1
-    push!(distance,cnt)
-    push!(path,next)
-    cnt += 1
-   
-    while !isempty(cur_level)
-        @inbounds for v in cur_level
-            @inbounds @simd for i in  outneighbors(g, v)
-                if !visited[i]
-                    push!(next_level, i)
-                    push!(distance,cnt)
-                    push!(path,i)
-                    visited[i] = true
-                end
-            end
-        end
-        empty!(cur_level)
-        cnt += 1
-        cur_level, next_level = next_level, cur_level
-        ## do I need sort
-        sort!(cur_level)
-    end
-    #println("path $source:",path)
-    #println("distance $source:",distance)
-    return path,distance    
+function locateBridges(A :: SparseMatrixCSC{Float64})
+    edges = bridges(LightGraphs.Graph(A))
+    A, extnodes = removeBridges(A, edges, nedges)
+    B = Bridges(edges, extnodes)
+    return A,B
 end
 
-function _bfs_parents(g::AbstractGraph{T}, source, neighborfn::Function) where T
-    n = nv(g)
-    visited = falses(n)
-    parents = zeros(T, nv(g))
-    cur_level = Vector{T}()
-    sizehint!(cur_level, n)
-    next_level = Vector{T}()
-    sizehint!(next_level, n)
-    @inbounds for s in source
-        visited[s] = true
-        push!(cur_level, s)
-        parents[s] = s
+function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs :: Integer)
+    nodes =  Set{Int64}()
+    for e in brs
+        A[e.src,e.dst] = 0.0
+        A[e.dst,e.src] = 0.0
+        push!(nodes,e.src)
+        push!(nodes,e.dst)
     end
-    while !isempty(cur_level)
-        @inbounds for v in cur_level
-            @inbounds @simd for i in  neighborfn(g, v)
-                if !visited[i]
-                    push!(next_level, i)
-                    parents[i] = v
-                    visited[i] = true
-                end
-            end
-        end
-        empty!(cur_level)
-        cur_level, next_level = next_level, cur_level
-        sort!(cur_level)
+    return dropzeros!(A), nodes
+end
+
+function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Array{Int64,1})
+    ### delnodes creates a new array so the numbering
+    ### is remapped. I want the numbering to stay the
+    ### same, so I will just write zeros ontop of
+    ### A whereever is needed.
+    ### A = delnodes(A, B.core1nodes)
+    j :: Int64 = 0
+    rows = rowvals(A)
+    ## or   colptr = mat.colptr , rowval = mat.rowval
+    #vals = nonzeros(A)
+    for u in core1nodes
+        j = nzrange(A, u)[1]
+        A[u,rows[j]] = 0.0
+        A[rows[j],u] = 0.0
     end
-    return parents
+    for i in 1:2:length(B.edges)
+        A[B.edges[i],B.edges[i+1]] = 0.0
+        A[B.edges[i+1],B.edges[i]] = 0.0
+    end
+    dropzeros!(A)
+    println("size of A after dropzeros! = ",size(A,1)," ",nnz(A))
+    return A
+end
+
+function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Set{Int64})
+    j = Int64
+    rows = rowvals(A)
+    for u in core1nodes
+        j = nzrange(A, u)[1]
+        A[u,rows[j]] = 0.0
+        A[rows[j],u] = 0.0
+    end
+    for i in 1:2:length(B.edges)
+        A[B.edges[i],B.edges[i+1]] = 0.0
+        A[B.edges[i+1],B.edges[i]] = 0.0
+    end
+    return dropzeros!(A)
+end
+
+function extractBridges(A :: SparseMatrixCSC{Float64})
+    start_time = time()
+    B = Bridges
+    B, core1nodes = bridges2(LightGraphs.Graph(A))
+    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
+    println(100*length(B.edges)/A.n, "% nodes are core2.")
+    println("finding bridges time: ", time() - start_time, "(s)")
+    t = time()
+    A  = removeBridges(A, B, core1nodes)
+    println("remove bridges time: ", time()- t, "(s)")
+    return A,B
+end
+
+
+function computeCore2Bridges(A :: SparseMatrixCSC{Float64})
+    g = LightGraphs.Graph(A)
+    Bridgescore1 :: Int64 = 0
+    Bridgescore2 :: Int64 = 0
+    Bridgescore1 = nbofbridges(g)
+    v1 = k_core(g,2)
+    A1 = A[v1,v1]
+    Bridgescore2 = nbofbridges(LightGraphs.Graph(A1))
+    println("Bridgescore1 = ", Bridgescore1, "Bridgescore2 = ", Bridgescore2)
+    println((100*Bridgescore2)/(nnz(A)/2), "% edges are bridges type core2.")
 end

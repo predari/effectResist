@@ -10,28 +10,17 @@ include("Linvdiag.jl")
 include("LinvDistance.jl")
 include("ShortestPaths.jl")
 include("structures.jl")
+include("methods.jl")
 using Laplacians
 using LightGraphs
 #using LightGraphs.SimpleEdge
-using DataStructures
-using StatsBase
+using DataStructures ## for SortedSets
+using StatsBase ## for pivots
 
 function isTree(A::SparseMatrixCSC)
     isConnected(A) && (nnz(A) == 2*(A.n-1))
 end
 
-function delextnode(a::Array{Float64}, node::Int64)
-    a2 = filter!(e->e!=node,a)
-    return a2
-end
-
-function delextnode(a::Array{Float64}, node:: Array{Int64,1}, len :: Int64)
-    a2 = a
-    for i in 1:len
-        a2 = filter!(e->e!=node[i],a2)
-    end
-    return a2
-end
 
 function checkDistancesComponent(cf, A :: SparseMatrixCSC{Float64})
     println(cf)
@@ -46,116 +35,6 @@ function checkDistancesComponent(cf, A :: SparseMatrixCSC{Float64})
     end
 end
 
-
-function erJLT(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64})
-
-    n = A.n
-    start_approx_time = time()        
-
-    er = LinvdiagSS(A;JLfac=20)
-    u = indmin(er)
-    L = delnode2(L,u,n)
-    A = delnode2(A,u,n)
-    cf = (n > 2000) ? (n/appxInvTrace(L;JLfac=200)) : ( n / trace( inv( full(L) ) ) )
-    end_approx_time = time()
-    println("TOTAL APPROX TIME ISSSS: ", end_approx_time - start_approx_time, "(s)")    
-  return u, cf;
-
-end
-
-function approx(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
-    logw(w,"****** Running (chinese) approx ******")
-    u, maxcf = erJLT(A,L)
-    logw(w,"\t node with argmax{c(", u, ")} = ", maxcf)
-    return u
-end
-
-function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
-    logw(w,"****** Running (core2) approx ******")
-    g = LightGraphs.Graph(A)
-    n = A.n
-    println("A.n = ",n)
-    core2bdry = Array{Int64,1}
-    sizes = Array{Array{Int, 1}}
-    core2bdry, sizes = bridges3(g)
-    core2 = k_core(g, 2)
-    println("size of core2 = ",length(core2))
-    if isempty(setdiff(core2bdry,core2)) == false
-        println("WARNING: boundary nodes of core2 are not in core2!")
-    end    
-    # println(bridges)
-    # println("core2")
-    # println(core2)
-    # core2bdry = Array{Int, 1}()
-    # for i in 1:2:length(bridges)
-    #     if isempty(findin(core2,bridges[i])) == false && isempty(findin(core2,bridges[i+1])) == true
-    #         source = bridges[i]
-    #         next = bridges[i+1]
-    #     elseif isempty(findin(core2,bridges[i])) == true && isempty(findin(core2,bridges[i+1])) == false
-    #         source = bridges[i+1]
-    #         next = bridges[i]
-    #     else
-    #         continue;
-    #     end
-    #     i :: Int64 = 1
-    #     push!(core2bdry,source)
-    #     p, d = bfs_edge_subtree2(g,source,next)
-    #     println(source," ", next, " ",d)
-    #     cntr = zeros(Int64, maximum(d))
-    #     cntr = count2(d,length(d))
-    #     sizes[i] = [];
-    #     for j in 1:length(cntr)
-    #         push!(sizes[i], cntr[j])
-    #     end
-    #     i += 1
-    # end
-    # println("core2bdry = ",unique(core2bdry), " len=",length(unique(core2bdry)))
-    #println("sizes = ",sizes, " len=",size(sizes,1))
-    distances = LinvDistance(A[core2,core2], core2bdry, sizes, core2)
-    cf = calculateCF(distances, n, length(distances))
-    logw(w,"\t node with argmax{c(",  core2[indmax(cf)], ")} = ", maximum(cf))
-end
-
-# TODO: remove
-function erINV(G, alldistances)    
-    n = G.n;
-    er = zeros(n)
-    L = lapl(G)
-    u = 1
-    L2 = delnode2(L,u,n)
-    Linv = inv(L2)
-    distances = calculateCommuteDists(Linv, n, u)
-    #println(distances)
-    return distances
-end
-
-
-function exact(G, w :: IOStream)
-    logw(w,"****** Running (my) exact ******")
-    distances = erINV(G,1)
-    #println("Exact distance:",distances)
-    cf = calculateNodeDists(distances, G.n)
-    #println("Exact distance:",cf)
-    cf = calculateCF(cf, G.n)
-    logw(w,"\t node with argmax{c(", indmax(cf), ")} = ",
-         maximum(cf))
-    # A, L = sparseAdja(G)
-    # B = Bridges 
-    # A, B = extractBridges(A)
-    # for node in B.edges
-    #     if indmax(cf) == node
-    #         println("MAX VALUE $node IS PART OF LINK NODES!!!")
-    #         return;
-    #     end
-    # end
-    # for node in B.core2nodes
-    #     if indmax(cf) == node
-    #         println("MAX VALUE $node IS PART OF CORE2NODES NODES!!!")
-    #         return;
-    #     end
-    # end
-    return indmax(cf)
-end
 
 #function localApprox(A, brg :: Bridges, w :: IOStream)
 function localApprox(A, extnodes:: Array{Int64,1}, size::Integer , w :: IOStream)
@@ -180,121 +59,6 @@ function localApprox(c :: Component, w :: IOStream)
 end
 
 
-function delnodes(A:: SparseMatrixCSC{Float64}, v::Set{Int64})
-    idx = setdiff(Array(1:A.n),v)
-    return A[idx, idx]
-end
-# TODO: remove
-function delnode2(L, v, t)
-    return L[[1:v-1;v+1:t], [1:v-1;v+1:t]]
-end
-
-
-function localApproxTest(G, bridges, w :: IOStream)
-    A =  sparseAdja2(G)
-    return calculateCF(localApprox(A, 0, w), A.n)
-end
-
-function locateBridges(A :: SparseMatrixCSC{Float64})
-    edges = bridges(LightGraphs.Graph(A))
-    #println("Time of finding bridges!")
-    #nedges = size(edges,1)
-    #println((100*nedges)/(G.m), "% edges are bridges.")
-    A, extnodes = removeBridges(A, edges, nedges)
-    B = Bridges(edges, extnodes)
-    return A,B
-end
-
-function removeBridges(A :: SparseMatrixCSC{Float64}, brs, nbrs :: Integer)
-    #nodes =  Array{Int64,1}()
-    nodes =  Set{Int64}()
-    for e in brs
-        A[e.src,e.dst] = 0.0
-        A[e.dst,e.src] = 0.0
-        push!(nodes,e.src)
-        push!(nodes,e.dst)
-    end
-    return dropzeros!(A), nodes
-end
-
-function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Array{Int64,1})
-    ### delnodes creates a new array so the numbering
-    ### is remapped. I want the numbering to stay the
-    ### same, so I will just write zeros ontop of
-    ### A whereever is needed.
-    ### A = delnodes(A, B.core1nodes)
-    #println(full(A))
-    
-    j :: Int64 = 0
-    rows = rowvals(A)
-    ## or   colptr = mat.colptr , rowval = mat.rowval
-    #vals = nonzeros(A)
-    for u in core1nodes
-        j = nzrange(A, u)[1]
-        A[u,rows[j]] = 0.0
-        A[rows[j],u] = 0.0
-    end
-    # for e in B.edges        
-    #     A[e.src,e.dst] = 0.0
-    #     A[e.dst,e.src] = 0.0
-    # end
-    for i in 1:2:length(B.edges)
-        A[B.edges[i],B.edges[i+1]] = 0.0
-        A[B.edges[i+1],B.edges[i]] = 0.0
-    end
-    ## dropzeros! is necessary
-    dropzeros!(A)
-    println("size of A after dropzeros! = ",size(A,1)," ",nnz(A))
-    return A
-end
-
-
-function removeBridges(A :: SparseMatrixCSC{Float64}, B :: Bridges, core1nodes :: Set{Int64})
-    j = Int64
-    rows = rowvals(A)
-    for u in core1nodes
-        j = nzrange(A, u)[1]
-        A[u,rows[j]] = 0.0
-        A[rows[j],u] = 0.0
-    end
-    for i in 1:2:length(B.edges)
-        A[B.edges[i],B.edges[i+1]] = 0.0
-        A[B.edges[i+1],B.edges[i]] = 0.0
-    end
-    return dropzeros!(A)
-end
-
-function extractBridges(A :: SparseMatrixCSC{Float64})
-    start_time = time()
-    B = Bridges
-    B, core1nodes = bridges2(LightGraphs.Graph(A))
-    println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
-    println(100*length(B.edges)/A.n, "% nodes are core2.")
-    println(100*length(core1nodes)/(nnz(A)/2), "% edges are bridges type core1.")
-    println( 100*length(core1nodes)/(A.n), "% nodes are core1.")
-    println("finding bridges time: ", time() - start_time, "(s)")
-    t = time()
-    println("after remove bridges size of A = ",size(A,1), " ", nnz(A))
-    A  = removeBridges(A, B, core1nodes)
-    #println("length of core1nodes = ",length(core1nodes), " ", core1nodes)
-    println("bridges ", B.edges)
-    println("after remove bridges size of A = ",size(A,1), " ", nnz(A))
-    println("remove bridges time: ", time()- t, "(s)")
-    return A,B
-end
-
-
-function computeCore2Bridges(A :: SparseMatrixCSC{Float64})
-    g = LightGraphs.Graph(A)
-    Bridgescore1 :: Int64 = 0
-    Bridgescore2 :: Int64 = 0
-    Bridgescore1 = nbofbridges(g)
-    v1 = k_core(g,2)
-    A1 = A[v1,v1]
-    Bridgescore2 = nbofbridges(LightGraphs.Graph(A1))
-    println("Bridgescore1 = ", Bridgescore1, "Bridgescore2 = ", Bridgescore2)
-    println((100*Bridgescore2)/(nnz(A)/2), "% edges are bridges type core2.")
-end
 
 function buildComponents(A :: SparseMatrixCSC{Float64}, B :: Bridges)
     start_time = time()
