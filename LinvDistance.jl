@@ -121,7 +121,7 @@ function LinvDistance(A::SparseMatrixCSC{Float64}, bdry::Array{Int64,1},  extern
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(A)
     m = size(U,1)
-    println("m = ", m, " nnz(A) = ", nnz(A)/2)
+    #println("m = ", m, " nnz(A) = ", nnz(A)/2)
     er = zeros(n)
     er2 = zeros(n)
     cf = zeros(n)
@@ -172,7 +172,7 @@ function LinvDistance(c::Component ; ep=0.3, matrixConcConst=4.0, JLfac=200.0)
     k = round(Int, JLfac*log(n)) # number of dims for JL    
     U = wtedEdgeVertexMat(c.A)
     m = size(U,1)
-    println("m = ", m, " nnz(A) = ", nnz(c.A)/2)
+    #println("m = ", m, " nnz(A) = ", nnz(c.A)/2)
     er = zeros(n)
     er2 = zeros(n)
     ## first position for Sigma(d(u,v: where v not in bdry)). For d(u,bdry)

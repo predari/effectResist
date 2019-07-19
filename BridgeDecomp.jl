@@ -7,6 +7,25 @@ include("methods.jl")
 include("sampling.jl")
 using Laplacians
 
+function callCore2Approx(G :: Graph, w :: IOStream, solution = nothing)
+    A = sparseAdja2(G)
+    wrapproxcore2(A, w, solution)
+end
+
+function callSamplingApprox(G :: Graph, w :: IOStream, pv:: Int64, solution = nothing)
+    A = sparseAdja2(G)
+    wrsamplingApprox(A, w, pv, solution)
+end
+
+function callApprox(G :: Graph, w :: IOStream, solution = nothing)
+    A, L = sparseAdja(G)
+    wrapprox(A,L,w, solution)
+end
+
+function callFastApprox(G :: Graph, w :: IOStream, solution = nothing)
+    A = sparseAdja2(G)
+    wrcfcAccelerate(A, w, solution)
+end
 
 datadir = string(ARGS[1],"/")
 outFName=string(ARGS[1],".txt")
@@ -14,29 +33,18 @@ w = open(outFName, "w")
 
 e = length(ARGS) >= 2 ? parse(Float64,ARGS[2]) : 0.1
 logw(w, "-------------------------------------------------------- ")
-# #n = 8
-# #m = 20
-# #Line = Components3Graph(n,m)
 
-# #Line = TestGraph(20, 54)
-# #Line = TestGraph(18, 48)
-# Line = TestGraph(21, 54)
-# println(Line)
-# A, L = sparseAdja(Line)
-# #@time approx(A,L,w)
-# #Line = Components3Graph(8, 22)
-# #Line = TestGraph(21, 54)
-# #Line = TestGraph(18, 48)
-# #Line = TestGraph(20, 54)
-# #println(Line)
-# #A, L = sparseAdja(Line)
-
-# #@time max = exact(Line,w)
-
+#Line = Components3Graph(8, 22)
+#Line = TestGraph(18, 48)
 Line = TestGraph(21, 54)
 println(Line)
+#@time max = exact(Line,w)
 A, L = sparseAdja(Line)
-@time cfcAccelerate(A, w, 25)
+wrapprox(A,L,w)
+A, L = sparseAdja(Line)
+wrcfcAccelerate(A, w)
+A, L = sparseAdja(Line)
+wrapproxcore2(A, w)
 
 for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     logw(w, "---------------------",rFile,"-------------------------- ")
@@ -48,14 +56,11 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
         logw(w," WARNING: Graph is not connected. Program will exit!");
         exit()
     end
-
-    A, L = sparseAdja(G)
-#    @time  max = approx(A,L,w)
-#    @time max = exact(G,w)
-#    @time cfcAccelerate(A, w, 25)    
-#    @time approxcore2(A, L, w)
-#    A, L = sparseAdja(G)
-    @time cfcAccelerate(A, w, 25)    
+#    callApprox(G, w)
+#    callSamplingApprox(G, w, 10)
+    @time    callCore2Approx(G, w)
+    @time    callFastApprox(G, w)
+   exit() 
 end
 
 # - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]

@@ -50,6 +50,8 @@ function wrapprox(A:: SparseMatrixCSC{Float64}, L:: SparseMatrixCSC{Float64}, w 
         if solution != u
             logw(w,"\t THIS APPROX RESULT IS DIFFERENT THAN OTHERS (OR THE EXACT SOL = ", solution,")")
         end        
+    else
+        logw(w,"\t SOLUTION IS NOT GIVEN")
     end
 end
 
@@ -79,7 +81,7 @@ function exact(G, w :: IOStream)
 end
 
 
-function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, w :: IOStream)
+function approxcore2(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     logw(w,"****** Running (core2) approx ******")
     g = LightGraphs.Graph(A)
     n = A.n
@@ -98,8 +100,8 @@ function approxcore2(A:: SparseMatrixCSC{Float64},L:: SparseMatrixCSC{Float64}, 
     return core2[indmax(cf)]
 end
 
-function wrapproxcore2(A:: SparseMatrixCSC{Float64}, L:: SparseMatrixCSC{Float64}, w :: IOStream, solution = nothing)
-    u = approxcore2(A, L, w)
+function wrapproxcore2(A:: SparseMatrixCSC{Float64}, w :: IOStream, solution = nothing)
+    u = approxcore2(A, w)
     if solution != nothing
         if solution != u
             logw(w,"\t THIS APPROX RESULT IS DIFFERENT THAN OTHERS (OR THE EXACT SOL = ", solution,")")
