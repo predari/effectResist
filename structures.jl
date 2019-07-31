@@ -48,6 +48,7 @@ Bridges(edges, core2nodes:: Set{Int64}, ext:: Array{Array{Int, 1}, 1}) = Bridges
 
 Bridges(edges :: Array{Int64,1}, core2nodes:: Array{Int64,1}, ext:: Array{Array{Int, 1}, 1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), ext, zeros(Int64,length(edges)))
 
+Bridges(edges :: Array{Int64,1}, core2nodes:: Array{Int64,1}) = Bridges(edges, length(edges)/2, core2nodes, length(core2nodes), Array{Array{Int, 1}, 1}(length(core2nodes)), zeros(Int64,length(edges)))
 
 # Bridges(edges, nodes) =
 #     Bridges(edges, size(edges,1),

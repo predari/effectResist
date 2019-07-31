@@ -58,16 +58,10 @@ for rFile in filter( x->!startswith(x, "."), readdir(string(datadir)))
     end
 #    callApprox(G, w)
 #    callSamplingApprox(G, w, 10)
-    @time    callCore2Approx(G, w)
-    @time    callFastApprox(G, w)
-   exit() 
+#    @time    callCore2Approx(G, w)
+#    @time    callFastApprox(G, w)
+    A = sparseAdja2(G)
+    #wrcfcAccelerate(A, w)
+    cfcAccelerate2(A, w)
 end
 
-# - list of core2nodes=[1, 211, 289, 290, 999, 1000, 1135, 2134, 2147, 2792]
-# - list of ext (count)=[280, 455, 756, 706, 170, 92, 57, 31, 147, 96]
-# - list of core3nodes=[2134, 2075, 2075, 289, 1135, 1020, 1020, 1000, 2792, 2384, 2384, 211]
-# - comp of each node=[2, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]
-
-# - list of core2nodes=[1, 289, 2134, 2147, 1000, 999, 211, 290]
-# - list of ext (count)=Array{Int64,1}[[280], [757], [32], [147], [93, 1, 56], [170], [456, 1, 95], [706]]
-# - list of core3nodes=[2134, 2075, 289, 2075]

@@ -43,7 +43,7 @@ function calculateNodeDists(distances, len)
 end
 
 #1 ./ [1, 2, 3]
-function calculateCF(cf, n)
+function calculateCF(cf:: Array{Float64,1}, n)
     
     for i in 1:n
          cf[i]= n/cf[i]
@@ -61,6 +61,14 @@ function calculateCF(cf, n, sizecf)
     end
     
     return cf
+end
+
+function calculateCF(cf :: Float64, n)
+    if cf == 0.0
+        println("WARNING: effective resistance distance cannot be zero!")
+        exit()
+    end
+    return cf = n/cf
 end
 
 

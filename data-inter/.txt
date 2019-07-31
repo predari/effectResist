@@ -1,8 +1,10 @@
 -------------------------------------------------------- 
-	 Locally: node with argmin{c(5)} = 12.62471045320882
-	 Locally: node with argmin{c(10)} = 1.2813690569822438
-	 Locally: node with argmin{c(16)} = 1.3396783196373117
-	 node with argmax{c(5)} = 0.7155340658346834
 ---------------------out.arenas-pgp-------------------------- 
 Reading graph from edges list file out.arenas-pgp
 	 G.n: 10680	 G.m: 24316
+---------------------out.reactome-------------------------- 
+Reading graph from edges list file out.reactome
+	 G.n: 5973	 G.m: 145778
+---------------------out.z-caida20071105-------------------------- 
+Reading graph from edges list file out.z-caida20071105
+	 G.n: 26475	 G.m: 53381

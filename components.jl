@@ -31,11 +31,13 @@ end
 #### do not delete all components of size 1
 function nodesInComps(compvec::Vector{Ti}, bridges :: Array{Ti,1}) where Ti
     nc = maximum(compvec)
+    println("compvec", compvec)
     tokeep = Array{Ti,1}()
     sizes = zeros(Ti,nc)
     for i in compvec
         sizes[i] += 1
     end
+    println(sizes)
     ### TODO: maybe count func is slow?? Check
     for u in unique(bridges)
         if count(x->x==u,bridges) > 1
@@ -56,8 +58,11 @@ function nodesInComps(compvec::Vector{Ti}, bridges :: Array{Ti,1}) where Ti
             push!(idx,i)
         end
     end
+    l = length(idx)
+    println("l = $l and idx= ", idx)
     idx = [idx; tokeep]
     l = length(idx)
+    println("l = $l and idx= ", idx)
     comps = Vector{Vector{Ti}}(l)
      for i in 1:l
          comps[i] = zeros(Ti,sizes[idx[i]])
@@ -106,8 +111,10 @@ function allComp(mat:: SparseMatrixCSC{Tv,Ti}, bridges :: Array{Ti,1}) where {Tv
     cv = components(mat)
     nodes = nodesInComps(cv,bridges)
     nc = length(nodes)
+    println("nc:", nc)
     comps = Vector{SparseMatrixCSC{Tv,Ti}}(nc) # (undef nc)
     for (i, c) in enumerate(nodes)
+        println(c)
         comps[i] = mat[c,c]
     end
     return comps, nodes, nc
@@ -184,57 +191,72 @@ end
 
 
 function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C :: Array{Component,1}, nc :: Int64)
-    n = length(cmplist)
+    
+    ue = unique(edges)
+    n = length(ue)
+    #println(edges)
+    #println(ue)
+    #println(1:n)
+    #println(cmplist)
+    ## mape mapc store the component index and the node index
+    ## for the numbering of the contracted graph.
+    mape = zeros(Int64,n)
+    mapc = zeros(Int64,n)
     cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
-    for i in 1:2:length(edges)
-        cA[i,i+1] .= 1.0
-        cA[i+1,i] .= 1.0
+    for i in 1:2:length(edges)   
+        x = getindex(findin(ue,edges[i]))
+        y = getindex(findin(ue,edges[i+1]))
+        mapc[x] = cmplist[i]
+        mapc[y] = cmplist[i+1]
+        mape[x] = edges[i]
+        mape[y] = edges[i+1]
+        #cA[i,i+1] .= 1.0
+        #cA[i+1,i] .= 1.0
+        cA[x,y] .= 1.0
+        cA[y,x] .= 1.0
+
     end
+    #println(mapc)
+    #println(mape)
+    #println(full(cA))
     ### TODO:: address the fact that there are components with size of 1.
     ### if this is not addressed, then we have edges that are not bridges
     ### for instance 1--C0---25, 1--C'0---4, which after the strip function
     ### will result to 1--25 and 1--4, which is not allowed and creates
     ### non unique edge indexes that result in different of length
     ### between idx and lidx2, lidx1 !
-    #println(cA)
-    #nc = length(C)
     for i in 1: nc
-        idx = findin(cmplist,i)
-        #println("i $i ", length(unique(idx)))
-        
+        idx = findin(mapc,i)
+        #println("i $i ", idx)
         if length(idx) > 1
             c = C[i]
-            if c.nc > 1
-                #println("component:",i)
-                #println(idx," ", edges[idx])
-                #println("c.link size = ", length(c.link))
-                #println(edges[idx])
-                #println(c.link)
-                #println(setdiff(c.link,edges[idx]))
-                lidx1 = findin(c.link, edges[idx])
-                #println(" ", length(lidx1))
-                lidx2 = findin(c.nodemap, edges[idx])
-                lidx1 += 1
-                #println(lidx1, lidx2)
-                dist = c.distances[lidx2,lidx1]
-                #println(lidx2)
-                #println(lidx1)
-                #println("idx = ",  " len= ", length(idx), " ", length(idx))
-                #println("dist = ", " len= ", size(dist,1), " ",size(dist,2))
-                #len = length(idx)
-                #random = ones(len,len)*0.5
-                #cA[idx,idx] = random
-                ### following is the correct line!!!!
-                cA[idx,idx] = dist
-            else
-                ##### TODO: patch!!!!! change!!
-                logw(w,"WARNING: problem with components with 1 node! ");
-                cA[idx,idx] = 0.0000001
+            ### TODO: I don't really need the following if
+            if c.nc == 1
+                println("WARNING: component size should be larger than one!")
             end
+            #println("component:",i)
+            #println(idx," ", edges[idx])
+            #println("c.link size = ", length(c.link))
+            #println(edges[idx])
+            #println(c.link)
+            #println(setdiff(c.link,edges[idx]))
+            #lidx1 = findin(c.link, edges[idx])
+            lidx1 = findin(c.link, mape[idx])
+            #println(" ", length(lidx1))
+            #lidx2 = findin(c.nodemap, edges[idx])
+            lidx2 = findin(c.nodemap, mape[idx])
+            lidx1 += 1
+            #println(lidx1, lidx2)
+            dist = c.distances[lidx2,lidx1]
+            #println(lidx2)
+            #println(lidx1)
+            #println("idx = ",  " len= ", length(idx), " ", length(idx))
+            #println("dist = ", " len= ", size(dist,1), " ",size(dist,2))
+            #len = length(idx)
+            cA[idx,idx] = dist
         end
-        #println(cA)
     end
-    ### need to clean causalties because of cA[idx,idx] = dist
+    ### need to clear ones in diagonal caused by cA[idx,idx] = dist
     for i in 1:n
         if cA[i,i] != 0.0
             cA[i,i] = 0.0
@@ -244,11 +266,12 @@ function contractAdjGraph(edges :: Array{Int64,1}, cmplist :: Array{Int64,1} , C
     
     if !Laplacians.isConnected(cA)
         logw(w,"WARNING: contracted graph should be connected! ");
+        logw(w,"WARNING: Program will exit!");
         exit()
     end
-    if !(isConnected(A) && nnz(A) == 2*(A.n-1))
-        logw(w,"WARNING: contracted graph should be a tree! ");
-    end
+    # if !(isConnected(cA) && nnz(cA) == 2*(cA.n-1))
+    #     logw(w,"WARNING: contracted graph should be a tree! ");
+    # end
     return cA
 end
 

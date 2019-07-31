@@ -196,40 +196,40 @@ end
 
 
 
-function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solut = nothing)
-    start_time = time()
-    u :: Int64 = 0
-    n = A.n
-    B = Bridges
-    A, B = extractBridges(A)
-    println("### extracting bridges time: ", time()- start_time, "(s)") 
-    t = time()
-    C = Array{Component,1}
-    C = buildComponents(A, B)
-    count = length(C)
-    println("-- Total components number:", count)
-    println("### creating components time: ", time()- t, "(s)") 
-    isSpecialNode(B.edges, B.core2nodes, solut)
-    isInMaxComponent(C, solut)
-    printDiagnostics(C, B)
+# function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solut = nothing)
+#     start_time = time()
+#     u :: Int64 = 0
+#     n = A.n
+#     B = Bridges
+#     A, B = extractBridges(A)
+#     println("### extracting bridges time: ", time()- start_time, "(s)") 
+#     t = time()
+#     C = Array{Component,1}
+#     C = buildComponents(A, B)
+#     count = length(C)
+#     println("-- Total components number:", count)
+#     println("### creating components time: ", time()- t, "(s)") 
+#     isSpecialNode(B.edges, B.core2nodes, solut)
+#     isInMaxComponent(C, solut)
+#     printDiagnostics(C, B)
 
-    #solveTime = runlocalApprox(C)
-    # println(" solving time : ", solvetime, "(s)")
-    if count == 1
-        c = C[1]
-        t = time()
-        print("Approximating component 1 ... ")
-        c.distances = localApprox(c, w)
-        println(" done")
-        println("calculate component time:", time() - t, "(s)")
-        ### distances are basically kept on one dim array
-        c.distances = sum(c.distances,2)
-        cf = calculateCF(c.distances, n, c.nc)
-        u = c.nodemap[indmax(cf)]
-        logw(w,"node with argmax{c(", u , ")} = ", maximum(cf))
-    else
-    end
-end
+#     #solveTime = runlocalApprox(C)
+#     # println(" solving time : ", solvetime, "(s)")
+#     if count == 1
+#         c = C[1]
+#         t = time()
+#         print("Approximating component 1 ... ")
+#         c.distances = localApprox(c, w)
+#         println(" done")
+#         println("calculate component time:", time() - t, "(s)")
+#         ### distances are basically kept on one dim array
+#         c.distances = sum(c.distances,2)
+#         cf = calculateCF(c.distances, n, c.nc)
+#         u = c.nodemap[indmax(cf)]
+#         logw(w,"node with argmax{c(", u , ")} = ", maximum(cf))
+#     else
+#     end
+# end
 
 function samplingCompApprox(C :: Component, pv:: Int64, solution = nothing)
     start_time = time()
@@ -279,10 +279,10 @@ end
 
 
 function wrsamplingApprox(A:: SparseMatrixCSC{Float64}, w :: IOStream, pv:: Int64, solution = nothing)
-    u  = cfcAccelerate(A, w, solution)
-    if solution != nothing
-        if solution != u
-            logw(w,"\t THIS APPROX RESULT IS DIFFERENT THAN OTHERS (OR THE EXACT SOL = ", solution,")")
-        end        
-    end
+    # u  = cfcAccelerate(A, w, solution)
+    # if solution != nothing
+    #     if solution != u
+    #         logw(w,"\t THIS APPROX RESULT IS DIFFERENT THAN OTHERS (OR THE EXACT SOL = ", solution,")")
+    #     end        
+    # end
 end

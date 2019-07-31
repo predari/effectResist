@@ -148,6 +148,7 @@ function printDiagnostics(C :: Array{Component,1}, B :: Bridges)
         print("$idx")
         printComponent(c)
     end
+    println("End of printDiagnostics!\n")
 end
 
 function runlocalApprox(C :: Array{Component,1})
@@ -200,17 +201,15 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solut = noth
     A, B = extractBridges(A)
     println("### extracting bridges time: ", time()- start_time, "(s)") 
     t = time()
+    return
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
-    println("-- Total components number:", count)
+    #println("-- Total components number:", count)
     println("### creating components time: ", time()- t, "(s)") 
-    isSpecialNode(B.edges, B.core2nodes, solut)
-    isInMaxComponent(C, solut)
-    printDiagnostics(C, B)
-    println("here!!")
-    #solveTime = runlocalApprox(C)
-    # println(" solving time : ", solvetime, "(s)")
+    #isSpecialNode(B.edges, B.core2nodes, solut)
+    #isInMaxComponent(C, solut)
+    #printDiagnostics(C, B)
     if count == 1
         c = C[1]
         t = time()
@@ -269,10 +268,12 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solut = noth
         logw(w,"\t node with argmax{c(", u , ")} = ", maximum(cf))
         println("updating distances ",time()- t, "(s)")
         println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
-    end
+      end
+    println("I am here!!")
     return u
 end
 
+### TODO: bug in following func
 function wrcfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solution = nothing)
     println("****** Running (fast) approx ******")
 
@@ -282,4 +283,91 @@ function wrcfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solution =
             logw(w,"\t THIS APPROX RESULT IS DIFFERENT THAN OTHERS (OR THE EXACT SOL = ", solution,")")
         end        
     end
+end
+
+
+
+function cfcAccelerate2(A:: SparseMatrixCSC{Float64}, w :: IOStream)
+    start_time = time()
+    u :: Int64 = 0
+    B = Bridges
+    A, B = extractBridges(A)
+    println("### extracting bridges time: ", time()- start_time, "(s)")
+    println("Bridges:")
+    printBridges(B)
+    return 
+    t = time()
+    C = Array{Component,1}
+    C = buildComponents(A, B)
+    count = length(C)
+    println("### creating components time: ", time()- t, "(s)") 
+    #printDiagnostics(C, B)
+    println("Bridges:")
+    printBridges(B)
+    if count == 1
+        c = C[1]
+        t = time()
+        print("Approximating component 1 ... ")
+        c.distances = localApprox(c, w)
+        println(" done")
+        println("calculate component time:", time() - t, "(s)")
+        ### distances are basically kept on one dim array
+        c.distances = sum(c.distances,2)
+        cf = calculateCF(c.distances, A.n, c.nc)
+        u = c.nodemap[indmax(cf)]
+        logw(w,"node with argmax{c(", u , ")} = ", maximum(cf))
+    else
+        solve_time = time()
+        for (idx, c) in enumerate(C)
+            t = time()
+            print("Approximating component $idx ... ")
+            c.distances = localApprox(c, w)
+            println(" done")
+            println("calculate component time:", time() - t, "(s)")
+            lkdistances = sum(c.distances,1)[:,2:end]
+            tldistances = sum(c.distances,2)[:]
+            
+            #println("Distances: ",tldistances)
+            #mu, min = minDistanceInSet(c.link, tldistances)
+            #rate = evaluateMinDistance(tldistances, min)
+            #println("for link: $mu, ", 100*rate/c.nc, "% nodes have smaller er!" ) 
+            #logw(w,"node with argmin{c(", c.nodemap[indmin(tldistances)], ")} = ", minimum(tldistances))
+            cf = calculateCF(tldistances, A.n, c.nc)
+            u = c.nodemap[indmax(cf)]
+            logw(w,"node with argmax{c(", u , ")} = ", maximum(cf))
+            ### TODO: can I calculate a link version calculation that saves time for JLT???
+        end
+        println("### solving time: ", time()- solve_time, "(s)") 
+        t = time()
+        newcomp = B.comp
+        newedges = B.edges 
+        n :: Int64 = length(newcomp)
+        # TODO: check if allocating memory for newly defined variables helps performances
+        cA :: SparseMatrixCSC{Float64} = spzeros(n,n)
+        cA = contractAdjGraph(newedges, newcomp, C, count)
+        #println(full(cA))
+        return 
+        dist2 = zeros(Float64,count,count)
+        path2 = zeros(Int64,count,count)
+        dist2, path2 = shortestContractPaths(cA, count, newedges, newcomp)
+        #       println("path2:", path2)        
+        #       println("dist2:", dist2)
+        sizes = zeros(Int64,count)
+        sizes = compRealSizes(C, count)
+  #      println("Sizes:", sizes)
+        distcomp = zeros(Float64,count)
+        distcomp = compContractLocalDists(C, count, path2, dist2, sizes)
+        #     println("Final distcomp:", distcomp)
+        updateLocalDists(C, sizes,newedges, newcomp)
+        fdistance, fnodes = aggregateLocalDists(C, distcomp)
+        #fdistance, fnodes = aggregateDistances(C, count, path2, dist2, sizes, newedges, newcomp)
+        #println(fdistance)
+        #println(fnodes)
+        cf = calculateCF(fdistance, A.n,length(fdistance))
+        u = fnodes[indmax(cf)]
+        logw(w,"\t node with argmax{c(", u , ")} = ", maximum(cf))
+        println("updating distances ",time()- t, "(s)")
+        println("TOTAL CFC TIME IS: ", time() - start_time, "(s)")
+      end
+    return u
 end

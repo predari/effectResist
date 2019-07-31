@@ -1,4 +1,0 @@
--------------------------------------------------------- 
----------------------out.facebook-wosn-links-------------------------- 
-Reading graph from edges list file out.facebook-wosn-links
-	 G.n: 397316	 G.m: 1150755
