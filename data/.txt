@@ -2,3 +2,15 @@
 ---------------------ego-facebook.edges-------------------------- 
 Reading graph from edges list file ego-facebook.edges
 	 G.n: 2888	 G.m: 2981
+---------------------out.adjnoun_adjacency_adjacency-------------------------- 
+Reading graph from edges list file out.adjnoun_adjacency_adjacency
+	 G.n: 112	 G.m: 425
+---------------------out.arenas-jazz-new-------------------------- 
+Reading graph from edges list file out.arenas-jazz-new
+	 G.n: 198	 G.m: 2742
+---------------------out.maayan-vidal-------------------------- 
+Reading graph from edges list file out.maayan-vidal
+	 G.n: 2783	 G.m: 6007
+---------------------out.opsahl-powergrid-------------------------- 
+Reading graph from edges list file out.opsahl-powergrid
+	 G.n: 4941	 G.m: 6594

@@ -316,7 +316,6 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
             push!(linksneighbor, edges[i])
         end
     end
-    #println("links",links)
     #println("links length = ", length(links))
     #println("linksneighbor", linksneighbor)
     
@@ -353,7 +352,7 @@ function bridges2(g::AG) where {T, AG<:AbstractGraph{T}}
     #println(setdiff(links, core2nodes))
     #println("length",length(setdiff(links, core2nodes)))
     #println("current size:", nbc2)
-    println("Number of iterations: ", length(links))
+
     for (idx,l) in enumerate(links)
         if tms[linksneighbor[idx]] > 1
             push!(bridges,l)
@@ -877,28 +876,23 @@ end
 function extractBridges(A :: SparseMatrixCSC{Float64})
 
     B = Bridges
-    #start_time = time()
-    #B, core1nodes = bridges5(LightGraphs.Graph(A))
-    #println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
-    #println(100*length(B.edges)/A.n, "% nodes are core2.")
-    #println("### finding bridges time (bridges5): ", time() - start_time, "(s)")
-    #start_time = time()
-    #B, core1nodes = bridges6(LightGraphs.Graph(A))
-    # #println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
-    # #println(100*length(B.edges)/A.n, "% nodes are core2.")
-    #println("### finding bridges time (bridges6): ", time() - start_time, "(s)")
-    println()
+    # start_time = time()
+    # B, core1nodes = bridges2(LightGraphs.Graph(A))
+    # println("### finding bridges time (bridges2): ", time() - start_time, "(s)")
+    # println()
     start_time = time()
     B, core1nodes = bridges6(LightGraphs.Graph(A))
     # #println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
     # #println(100*length(B.edges)/A.n, "% nodes are core2.")
     println("### finding bridges time (bridges6): ", time() - start_time, "(s)")
-    println()
-    # println("### Time for bridges2 ")
-    start_time = time()
-    B, core1nodes = bridges2(LightGraphs.Graph(A))
-     println("### finding bridges time (bridges2): ", time() - start_time, "(s)")
-    # # println("### Time for bridges5 ")
+    #println()
+    ### TODO: bridges8 may be faster for larger graphs!
+    # start_time = time()
+    # B, core1nodes = bridges8(LightGraphs.Graph(A))
+    # # #println((100*B.m)/(nnz(A)/2), "% edges are bridges type core2.")
+    # # #println(100*length(B.edges)/A.n, "% nodes are core2.")
+    # println("### finding bridges time (bridges8): ", time() - start_time, "(s)")
+    #println()
     t = time()
     A  = removeBridges(A, B, core1nodes)
     println("### remove bridges time: ", time()- t, "(s)")
@@ -1781,9 +1775,11 @@ function addBridgesInTree2!(next:: Array{Int64,1}, bridges:: Array{Int64,1}, vis
 end
 
 
-### main bridges function that is used to calculate bridges
+### This is the bridges function that currently works the best
+### for calculating bridges
 ### the bndry nodes and all the related to bndry nodes
-### simple paths of core1 type. 
+### simple paths of core1 type.
+### exploring takes some time and reshaping. Reshaping may be improved.
 function bridges6(g::AG) where {T, AG<:AbstractGraph{T}}
     s = Vector{Tuple{T, T, T}}()
     low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
@@ -1877,31 +1873,27 @@ function bridges6(g::AG) where {T, AG<:AbstractGraph{T}}
     end
     deleteat!(udegree1,remove)
     deleteat!(udegree1count,remove)
-    
-    if core2nodes == unique(core2nodes)
-        println("core2nodes unique!!")
-    else
-        println("WARNING!!")
-        exit()
-    end
-    if udegree1 == unique(udegree1)
-        println("udegree1 unique!!")
-    else
-        println("WARNING!!")
-        exit()
-    end
-    if core1nodes == unique(core1nodes)
-        println("core1nodes unique!!")
-    else
-        println("WARNING!!")
-        exit()
-    end
-    
+    #checkUniqueness(core2nodes)
+    #checkUniqueness(udegree1)
+    #checkUniqueness(core1nodes)
+    ###########################################
+    # if core2nodes != unique(core2nodes)
+    #     println("WARNING!!")
+    #     exit()
+    # end
+    # if udegree1 != unique(udegree1)
+    #     println("WARNING!!")
+    #     exit()
+    # end
+    # if core1nodes != unique(core1nodes)
+    #     println("WARNING!!")
+    #     exit()
+    # end
+    ###########################################
     links = Array{Int64,1}()
     linksneighbor = Array{Int64,1}()
     
     nbc2 :: Int64 = length(core2nodes)
-    position = findin(edges,core2nodes)
     
     ### links are not unique but linksneighbor are unique!!
     ### CHECK: the above statement to make sure!
@@ -1909,20 +1901,29 @@ function bridges6(g::AG) where {T, AG<:AbstractGraph{T}}
     ### links and linksneighbor have the same size, but
     ### core2node is basically unique(links) and should have
     ### the same size as the first dimension of sizes.  
-    for (idx, i) in enumerate(position)
-        if isodd(i) == true
-            if tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
-                push!(links, edges[i])
-                push!(linksneighbor, edges[i + 1])
-            end
-        else
-            if tms[edges[i]] > 1 && length(outneighbors(g, edges[i-1])) > 1
-                push!(links, edges[i])
-                push!(linksneighbor, edges[i - 1])
-            end
+    # for (idx, i) in enumerate(position)
+    #     if isodd(i) == true
+    #         if tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
+    #             push!(links, edges[i])
+    #             push!(linksneighbor, edges[i + 1])
+    #         end
+    #     else
+    #         if tms[edges[i]] > 1 && length(outneighbors(g, edges[i-1])) > 1
+    #             push!(links, edges[i])
+    #             push!(linksneighbor, edges[i - 1])
+    #         end
+    #     end
+    # end
+    for i in 1:2:length(edges)
+        if tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
+            push!(links, edges[i])
+            push!(linksneighbor, edges[i+1])
+        elseif tms[edges[i + 1]] > 1  && length(outneighbors(g, edges[i])) > 1
+            push!(links, edges[i + 1])
+            push!(linksneighbor, edges[i])
         end
     end
-    
+    l :: Int64 = length(links)
     ### at this point we have:
     ### in core1nodes all nodes with tms 1.
     ### It means that we should remove some of them (those that are present in bridges).
@@ -1935,58 +1936,83 @@ function bridges6(g::AG) where {T, AG<:AbstractGraph{T}}
     sizes = Array{Array{Int, 1}}(nbc2)
     for i in indices(sizes,1) sizes[i] = []; end
 
-    bridges =  Array{Int64,1}()
+bridges =  Array{Int64,1}()
 #### TODO: maybe visited should be of size all edges of bridges type
 #### to avoid duplicate calls to bfs_edge_subtree3!!
-    visited = falses(length(links))
+    visited = falses(2*l)
     boundary = Array{Int64,1}()
 
     println("Number of iterations: ", length(links))
-    println("smaller number of iter ? : ", length(core2nodes))
     println("### setting up time:",time()- t, "(s)")    
+    k :: Int64 = 0
     tr1 = time()
     for (i, u) in enumerate(links)
         v = linksneighbor[i]    
-        ### this is directly a bridge
         if tms[v] > 1
-            ## avoid double entries in bridges
-            if (getindex(visited[i]) == false &&
-                getindex(visited[findin(links, v)]) == false)
-                push!(bridges, u)
-                visited[i] = true
-                push!(bridges, v)
-                visited[findin(links, v)] = true
-            end
-        else
-            tree, distances, extra = bfs_edge_subtree3( g, u, v, tms)
-            if isempty(extra) == true
+            push!(bridges, u)
+            push!(bridges, v)
+        elseif visited[i] == false && visited[l + i] == false
+            tree, distances, parents = bfs_edge_subtree3( g, u, v, tms)
+            if isempty(parents) == true
                 unii = getindex(findin(core2nodes, u))
                 len = length(sizes[unii])
+
                 cntr = zeros(Int64, maximum(distances))
                 cntr = count3(distances,length(distances))
                 if len == 0
                     push!(boundary, u)
+                    k += 1
                 end
                 for (j,c) in enumerate(cntr)
-                    if j <= len 
+                    if j <= len
+                        #print("$k = $u,$v BEFORE: sizes[$unii] ",sizes[unii])
                         sizes[unii][j] += c
+                        #println("... AFTER: sizes[$unii] ",sizes[unii])
                     else
                         push!(sizes[unii], c)
-                    end 
+                    end
+                    #if k == 151 || k == 152 || k == 150
+                    #    println("$k = $u,$v ", tree, " ", distances, " ",cntr)
+                    #end
+                    #println(" $k sizes[$unii] = ",sizes[unii], "  sizes2[$unii2] =  ",sizes2[unii2])
                 end
             else
                 #### means that we have intermediate nodes to
                 #### be single node components!
                 #### we make them all singular components
                 #### TODO : I need a visited here!!!
-                for i in 1:length(extra)
-                    if extra[i]!=0
-                        push!(bridges, i)
-                        push!(bridges, extra[i])
+                #println("tree: $u -> ", tree)
+                m = maximum(distances)
+                #println("distances: ", distances , " m = $m")
+                ## we only have one path.
+                if m == length(distances)
+                    #println("must be faster!")
+                    for i in 1:length(tree)-1
+                        push!(bridges, tree[i])
+                        push!(bridges, tree[i+1])
                     end
+                    push!(bridges, u)
+                    push!(bridges, tree[1])
+                    idx = findin(links, tree[end])
+                    visited[idx] = true
+                    visited[l+idx] = true
+                else
+                    #println("parents:", parents)
+                    for i in 1:length(parents)
+                        if parents[i]!=0
+                            #println("($i,",parents[i],")")
+                            push!(bridges, i)
+                            push!(bridges, parents[i])
+                            if tms[i] > 1
+                                idx = findin(links, i)
+                                visited[idx] = true
+                                visited[l+idx] = true
+                            end
+                        end
+                    end
+                    push!(bridges, u)
+                    push!(bridges, tree[1])
                 end
-                push!(bridges, u)
-                push!(bridges, tree[1])
             end
         end
     end
@@ -1994,34 +2020,46 @@ println("### exploration time:",time()- tr1, "(s)")
 
 tr3 = time()
 ### make sure that bridges are not part of core1nodes
+delecore1t = time()
+println("length core1nodes, bridges: ", length(core1nodes)," ", length(bridges))
 deleteat!(core1nodes,findin(core1nodes, bridges))
+println("### delecore1 time:",time()- delecore1t, "(s)")
 
-if boundary == unique(boundary)
-    println("boundary unique!!")
-else
-    println("WARNING!!")
-    exit()
-end
-
-
+#checkUniqueness(boundary)
+###########################################
+# if boundary != unique(boundary)
+#     println("WARNING!!")
+#     exit()
+# end
+###########################################
+println("length udegree1, boundary: ", length(udegree1)," ", length(boundary))
+setdifft = time()
 additional = setdiff(udegree1, boundary)
+println("### setdiff time:",time()- setdifft, "(s)")
+#println("bdry length: ", length(boundary), " unique links length: ",length(unique(links)))
 
+new_sizest = time()
 new_sizes = Array{Array{Int64,1}}(length(boundary) + length(additional))
 for i in indices(new_sizes,1) new_sizes[i] = []; end
-
-
 j :: Int64 = 1
-for i in 1:length(sizes)
+println("length of iteration: ",length(sizes))
+for i in indices(sizes,1)
     if !isempty(sizes[i])
         new_sizes[j] = sizes[i]
         u = core2nodes[i]
-        if in(u, udegree1) == true 
+        if in(u, udegree1) == true
+            #print("$u new_sizes[$j] = ",new_sizes[j])
             new_sizes[j][1] += getindex(udegree1count[findin(udegree1, u)])
+            #println(" ... after new_sizes[$j] = ",new_sizes[j])            
         end
         j += 1
     end
 end
 
+println("### new_sizes time:",time()- new_sizest, "(s)")
+
+update_sizest = time()
+println("length of iteration (udegree1): ",length(udegree1))
 ### updating additional nodes, that only have degree1 connections
 for (i, u) in enumerate(udegree1)
     if in(u, additional) == true
@@ -2029,28 +2067,26 @@ for (i, u) in enumerate(udegree1)
         j += 1
     end
 end
-
 boundary = [boundary ; additional]
-
-println("bridges = ",bridges)
-println("bdry = ", boundary)    
-println("sizes = ",new_sizes)
+println("### update_sizes time:",time()- update_sizest, "(s)")
+#println("bridges = ",bridges)
+#println("bdry = ", boundary)    
+#println("sizes = ",new_sizes)
 #println("core1nodes = ",core1nodes)
 
-
-
-if length(new_sizes) != length(boundary)
-    println("WARNING: Wrong size of sizes and core2nodes!")
-    println("WARNING: Program will exit!")
-    exit()
-end
-for u in core1nodes
-    if in(u,boundary) == true || in(u,bridges) == true
-        println("WARNING: core1nodes are not correct!")
-        exit()
-    end
-end
-
+###########################################
+# if length(new_sizes) != length(boundary)
+#     println("WARNING: Wrong size of sizes and core2nodes!")
+#     println("WARNING: Program will exit!")
+#     exit()
+# end
+# for u in core1nodes
+#     if in(u,boundary) == true || in(u,bridges) == true
+#         println("WARNING: core1nodes are not correct!")
+#         exit()
+#     end
+# end
+###########################################
 println("### reshaping bridges time:",time()- tr3, "(s)")
 
 B = Bridges(bridges, boundary, new_sizes)
@@ -2059,7 +2095,7 @@ return B, core1nodes
 end
 
 
-function getCoreNodes(g::AG, uedges :: Array{T,1}, tms :: Array{T,1}) where {T, AG<:AbstractGraph{T}}
+function createCoreNodes!(g::AG, uedges :: Array{T,1}, tms :: Array{T,1}) where {T, AG<:AbstractGraph{T}}
     core1nodes = Array{T,1}()
     core2nodes = Array{T,1}()
     for i in uedges
@@ -2070,7 +2106,7 @@ function getCoreNodes(g::AG, uedges :: Array{T,1}, tms :: Array{T,1}) where {T, 
             push!(core1nodes, i)
         end
     end
-    return core1nodes, core2nodes
+    return core1nodes, core2nodes, tms
 end
 
 function cleanDegree1Nodes!(g::AG, tms :: Array{T,1}, udegree1 :: Array{T,1}, udegree1count :: Array{T,1}) where {T, AG<:AbstractGraph{T}}
@@ -2083,7 +2119,7 @@ function cleanDegree1Nodes!(g::AG, tms :: Array{T,1}, udegree1 :: Array{T,1}, ud
     end
     deleteat!(udegree1,remove)
     deleteat!(udegree1count,remove)
-    return udegree1,udegree1count
+    #return udegree1,udegree1count
 end
 
 
@@ -2420,3 +2456,518 @@ return B, core1nodes
 end
 
 
+
+
+function detectAllBridges(g::AG) where {T, AG<:AbstractGraph{T}}
+    s = Vector{Tuple{T, T, T}}()
+    low = zeros(T, nv(g)) #keeps track of the earliest accesible time of a vertex in DFS-stack, effect of having back-edges is considered here
+    pre = zeros(T, nv(g)) #checks the entry time of a vertex in the DFS-stack, pre[u] = 0 if a vertex isn't visited; non-zero, otherwise
+    # bridges = Edge{T}[]   #keeps record of the bridge-edges
+    edges = Array{Int64,1}()
+    tms = zeros(T, nv(g))
+    degree1 = Array{Int64,1}()
+
+    st = time()
+
+    @inbounds for u in vertices(g)
+        pre[u] != 0 && continue
+        v = u #currently visiting vertex
+        wi::T = zero(T) #index of children of v
+        w::T = zero(T) #children of v
+        cnt::T = one(T) # keeps record of the time
+        first_time = true
+        
+        #start of DFS
+        while !isempty(s) || first_time
+            first_time = false
+            if  wi < 1 #initialisation for vertex v
+                pre[v] = cnt
+                cnt += 1
+                low[v] = pre[v]
+                v_neighbors = outneighbors(g, v)
+                wi = 1
+            else
+                wi, u, v = pop!(s) # the stack states, explained later
+                v_neighbors = outneighbors(g, v)
+                w = v_neighbors[wi]
+                low[v] = min(low[v], low[w]) # condition check for (v, w) being a tree-edge
+                if low[w] > pre[v]
+                    push!(edges,w)
+                    tms[w] += 1
+                    push!(edges,v)
+                    tms[v] += 1
+                    if length(v_neighbors) == 1
+                        push!(degree1, w)
+                    elseif length(outneighbors(g, w)) == 1
+                        push!(degree1, v)
+                    end
+                end
+                wi += 1
+            end
+            
+            
+            while wi <= length(v_neighbors)
+                w = v_neighbors[wi]
+                if pre[w] == 0
+                    push!(s, (wi, u, v))
+                    wi = 0 
+                    u = v
+                    v = w
+                    break
+                elseif w != u # (v, w) is a back-edge
+                    low[v] = min(low[v], pre[w]) # condition for back-edges
+                end
+                wi += 1
+            end
+            wi < 1 && continue
+        end
+        
+    end
+    println("### finding all bridges time:",time()- st, "(s)")
+    return edges, degree1, tms
+end
+
+
+
+function bridges6b(g::AG) where {T, AG<:AbstractGraph{T}}
+
+    edges = Array{Int64,1}()
+    tms = zeros(T, nv(g))
+    degree1 = Array{Int64,1}()
+    
+    edges, degree1, tms = detectAllBridges(g)
+
+    t = time()
+
+    degree1 = sort(degree1)
+    udegree1count = count4(degree1, length(degree1))
+    udegree1 = unique(degree1)
+
+    core1nodes = Array{T,1}()
+    core2nodes = Array{T,1}()
+    uedges = unique(edges)
+    core1nodes, core2nodes, tms = createCoreNodes!(g, uedges, tms)
+    nbc2 :: Int64 = length(core2nodes)
+    cleanDegree1Nodes!(g, tms, udegree1, udegree1count)    
+
+    if core2nodes != unique(core2nodes)
+        println("WARNING!!")
+        exit()
+    end
+    if udegree1 != unique(udegree1)
+        println("WARNING!!")
+        exit()
+    end
+    if core1nodes != unique(core1nodes)
+        println("WARNING!!")
+        exit()
+    end
+    
+    links = Array{Int64,1}()
+    linksneighbor = Array{Int64,1}()
+    
+    
+    ### links, linksneighbor correspond to edges of core2node
+    ### links and linksneighbor have the same size, but
+    ### core2nodes is basically unique(links) plus other nodes.
+    ### core2nodes should have the same size as the first dimension of sizes.  
+
+    for i in 1:2:length(edges)
+        if tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
+            push!(links, edges[i])
+            push!(linksneighbor, edges[i+1])
+        elseif tms[edges[i + 1]] > 1  && length(outneighbors(g, edges[i])) > 1
+            push!(links, edges[i + 1])
+            push!(linksneighbor, edges[i])
+        end
+    end
+    l :: Int64 = length(links)
+    ### at this point we have:
+    ### in core1nodes all nodes with tms 1.
+    ### It means that we should remove some of them (those that are present in bridges).
+    ### In core2nodes we have the opposite:
+    ### we have all nodes that belong to a bigger component
+    ### but we may need to add core2nodes that are part
+    ### of smaller component (or even single-node component)
+    ### but we don't know it yet
+    
+    sizes = Array{Array{Int, 1}}(nbc2)
+    for i in indices(sizes,1) sizes[i] = []; end
+
+    bridges =  Array{Int64,1}()
+#### TODO: maybe visited should be of size all edges of bridges type
+#### to avoid duplicate calls to bfs_edge_subtree3!!
+    visited = falses(2*l)
+    boundary = Array{Int64,1}()
+
+    println("Number of iterations: ", length(links))
+    println("### setting up time:",time()- t, "(s)")    
+
+    tr1 = time()
+    for (i, u) in enumerate(links)
+        v = linksneighbor[i]    
+        ### this is directly a bridge
+        if tms[v] > 1
+            push!(bridges, u)
+            push!(bridges, v)
+        elseif visited[i] == false && visited[l + i] == false
+            tree, distances, parents = bfs_edge_subtree3( g, u, v, tms)
+            if isempty(parents) == true
+                unii = getindex(findin(core2nodes, u))
+                len = length(sizes[unii])
+                cntr = zeros(Int64, maximum(distances))
+                cntr = count3(distances,length(distances))
+                if len == 0
+                    push!(boundary, u)
+                end
+                for (j,c) in enumerate(cntr)
+                    if j <= len 
+                        sizes[unii][j] += c
+                    else
+                        push!(sizes[unii], c)
+                    end 
+                end
+            else
+                #### means that we have intermediate nodes to
+                #### be single node components!
+                #### we make them all singular components
+                #### TODO : I need a visited here!!!
+                #println("tree: $u -> ", tree)
+                m = maximum(distances)
+                #println("distances: ", distances , " m = $m")
+                ## we only have one path.
+                if m == length(distances)
+                    #println("must be faster!")
+                    for i in 1:length(tree)-1
+                        push!(bridges, tree[i])
+                        push!(bridges, tree[i+1])
+                    end
+                    push!(bridges, u)
+                    push!(bridges, tree[1])
+                    idx = findin(links, tree[end])
+                    visited[idx] = true
+                    visited[l+idx] = true
+                else
+                    #println("parents:", parents)
+                    for i in 1:length(parents)
+                        if parents[i]!=0
+                            #println("($i,",parents[i],")")
+                            push!(bridges, i)
+                            push!(bridges, parents[i])
+                            if tms[i] > 1
+                                idx = findin(links, i)
+                                visited[idx] = true
+                                visited[l+idx] = true
+                            end
+                        end
+                    end
+                    push!(bridges, u)
+                    push!(bridges, tree[1])
+                end
+            end
+        end
+    end
+println("### exploration time:",time()- tr1, "(s)")
+
+tr3 = time()
+### make sure that bridges are not part of core1nodes
+deleteat!(core1nodes,findin(core1nodes, bridges))
+
+if boundary != unique(boundary)
+    println("WARNING!!")
+    exit()
+end
+
+
+additional = setdiff(udegree1, boundary)
+
+new_sizes = Array{Array{Int64,1}}(length(boundary) + length(additional))
+for i in indices(new_sizes,1) new_sizes[i] = []; end
+
+
+j :: Int64 = 1
+for i in 1:length(sizes)
+    if !isempty(sizes[i])
+        new_sizes[j] = sizes[i]
+        u = core2nodes[i]
+        if in(u, udegree1) == true 
+            new_sizes[j][1] += getindex(udegree1count[findin(udegree1, u)])
+        end
+        j += 1
+    end
+end
+
+### updating additional nodes, that only have degree1 connections
+for (i, u) in enumerate(udegree1)
+    if in(u, additional) == true
+        new_sizes[j] = [udegree1count[i]]
+        j += 1
+    end
+end
+
+boundary = [boundary ; additional]
+
+#println("bridges = ",bridges)
+#println("bdry = ", boundary)    
+#println("sizes = ",new_sizes)
+#println("core1nodes = ",core1nodes)
+
+
+
+if length(new_sizes) != length(boundary)
+    println("WARNING: Wrong size of sizes and core2nodes!")
+    println("WARNING: Program will exit!")
+    exit()
+end
+for u in core1nodes
+    if in(u,boundary) == true || in(u,bridges) == true
+        println("WARNING: core1nodes are not correct!")
+        exit()
+    end
+end
+
+println("### reshaping bridges time:",time()- tr3, "(s)")
+
+B = Bridges(bridges, boundary, new_sizes)
+println("### cleaning up time:",time()- t, "(s)")
+return B, core1nodes
+end
+
+function checkUniqueness(array :: Array{Int64,1})
+    if array != unique(array)
+        println("WARNING!! array is not unique!")
+        exit()
+    end
+end
+
+#### This is another version of bridges6.
+#### This version may be faster for larger graphs.
+function bridges8(g::AG) where {T, AG<:AbstractGraph{T}}
+    edges = Array{Int64,1}()
+    tms = zeros(T, nv(g))
+    degree1 = Array{Int64,1}()
+    
+    edges, degree1, tms = detectAllBridges(g)
+
+    t = time()
+    degree1 = sort(degree1)
+    udegree1count = count4(degree1, length(degree1))
+    udegree1 = unique(degree1)
+
+    core1nodes = Array{Int64,1}()
+    core2nodes = Array{Int64,1}()
+    uedges = unique(edges)
+    
+    for i in uedges
+        tms[i] = length(outneighbors(g, i)) - tms[i] + 1
+        if tms[i] > 1
+            push!(core2nodes, i)
+        else
+            push!(core1nodes, i)
+        end
+    end
+    
+    remove = Array{Int64,1}()
+    
+    for (idx, u) in enumerate(udegree1)
+        if tms[u] == 1
+            push!(remove,idx)
+        end
+    end
+    deleteat!(udegree1,remove)
+    deleteat!(udegree1count,remove)
+
+    #checkUniqueness(core2nodes)
+    #checkUniqueness(udegree1)
+    #checkUniqueness(core1nodes)
+
+    links = Array{Int64,1}()
+    linksneighbor = Array{Int64,1}()
+    
+    nbc2 :: Int64 = length(core2nodes)
+    
+    for i in 1:2:length(edges)
+        if tms[edges[i]] > 1 && length(outneighbors(g, edges[i+1])) > 1
+            push!(links, edges[i])
+            push!(linksneighbor, edges[i+1])
+        elseif tms[edges[i + 1]] > 1  && length(outneighbors(g, edges[i])) > 1
+            push!(links, edges[i + 1])
+            push!(linksneighbor, edges[i])
+        end
+    end
+    l :: Int64 = length(links)
+    ulinks = unique(links)
+    ul :: Int64 = length(ulinks)
+    
+    ### at this point we have:
+    ### in core1nodes all nodes with tms 1.
+    ### It means that we should remove some of them (those that are present in bridges).
+    ### In core2nodes we have the opposite:
+    ### we have all nodes that belong to a bigger component
+    ### but we may need to add core2nodes that are part
+    ### of smaller component (or even single-node component)
+    ### but we don't know it yet
+    ### the nodes that belong to the boundary are less in size than the unique links.
+    ### bridges are also less than unique links
+    
+    sizes = Array{Array{Int, 1}}(ul)
+    for i in indices(sizes,1) sizes[i] = []; end
+
+    bridges =  Array{Int64,1}()
+    visited = falses(2*l)
+    boundary = Array{Int64,1}()
+
+    println("Number of iterations: ", length(links))
+    println("### setting up time:",time()- t, "(s)")    
+    k :: Int64 = 0
+    tr1 = time()
+    for (i, u) in enumerate(links)
+        v = linksneighbor[i]    
+        if tms[v] > 1
+            push!(bridges, u)
+            push!(bridges, v)
+        elseif visited[i] == false && visited[l + i] == false
+            tree, distances, parents = bfs_edge_subtree3( g, u, v, tms)
+            if isempty(parents) == true
+                # before:
+                # unii = getindex(findin(core2nodes, u))
+                unii = getindex(findin(ulinks, u))
+                len = length(sizes[unii])
+
+                cntr = zeros(Int64, maximum(distances))
+                cntr = count3(distances,length(distances))
+                if len == 0
+                    push!(boundary, u)
+                    k += 1
+                end
+                for (j,c) in enumerate(cntr)
+                    if j <= len
+                        #print("$k = $u,$v BEFORE: sizes[$unii] ",sizes[unii])
+                        sizes[unii][j] += c
+                        #println("... AFTER: sizes[$unii] ",sizes[unii])
+                    else
+                        push!(sizes[unii], c)
+                    end
+                end
+            else
+                #### means that we have intermediate nodes to
+                #### be single node components!
+                #### we make them all singular components
+                #### TODO : I need a visited here!!!
+                #println("tree: $u -> ", tree)
+                m = maximum(distances)
+                #println("distances: ", distances , " m = $m")
+                ## we only have one path.
+                if m == length(distances)
+                    #println("must be faster!")
+                    for i in 1:length(tree)-1
+                        push!(bridges, tree[i])
+                        push!(bridges, tree[i+1])
+                    end
+                    push!(bridges, u)
+                    push!(bridges, tree[1])
+                    idx = findin(links, tree[end])
+                    visited[idx] = true
+                    visited[l+idx] = true
+                else
+                    #println("parents:", parents)
+                    for i in 1:length(parents)
+                        if parents[i]!=0
+                            #println("($i,",parents[i],")")
+                            push!(bridges, i)
+                            push!(bridges, parents[i])
+                            if tms[i] > 1
+                                idx = findin(links, i)
+                                visited[idx] = true
+                                visited[l+idx] = true
+                            end
+                        end
+                    end
+                    push!(bridges, u)
+                    push!(bridges, tree[1])
+                end
+            end
+        end
+    end
+println("### exploration time:",time()- tr1, "(s)")
+
+tr3 = time()
+### make sure that bridges are not part of core1nodes
+delecore1t = time()
+println("length core1nodes, bridges: ", length(core1nodes)," ", length(bridges))
+deleteat!(core1nodes,findin(core1nodes, bridges))
+println("### delecore1 time:",time()- delecore1t, "(s)")
+
+#checkUniqueness(boundary)
+
+println("length udegree1, boundary: ", length(udegree1)," ", length(boundary))
+setdifft = time()
+additional = setdiff(udegree1, boundary)
+println("### setdiff time:",time()- setdifft, "(s)")
+#println("bdry length: ", length(boundary), " unique links length: ",length(unique(links)))
+
+new_sizest = time()
+new_sizes = Array{Array{Int64,1}}(length(boundary) + length(additional))
+for i in indices(new_sizes,1) new_sizes[i] = []; end
+j :: Int64 = 1
+println("length of iteration: ",length(sizes))
+for i in indices(sizes,1)
+    if !isempty(sizes[i])
+        new_sizes[j] = sizes[i]
+        # before 
+        # u = core2nodes[i]
+        u = ulinks[i]
+        if in(u, udegree1) == true
+            #print("$u new_sizes[$j] = ",new_sizes[j])
+            new_sizes[j][1] += getindex(udegree1count[findin(udegree1, u)])
+            #println(" ... after new_sizes[$j] = ",new_sizes[j])
+        end
+        j += 1
+    end
+end
+println("### new_sizes time:",time()- new_sizest, "(s)")
+
+
+update_sizest = time()
+println("length of iteration (additional): ",length(additional))
+#println("length of additional: ",length(additional))
+### updating additional nodes, that only have degree1 connections
+# for (i, u) in enumerate(udegree1)
+#     if in(u, additional) == true
+#         new_sizes[j] = [udegree1count[i]]
+#         j += 1
+#     end
+# end
+for u in additional
+    #println(udegree1count[findin(udegree1,u)])
+    new_sizes[j] = udegree1count[findin(udegree1,u)]
+    j += 1
+end
+
+
+boundary = [boundary ; additional]
+println("### update_sizes time:",time()- update_sizest, "(s)")
+#println("bridges = ",bridges)
+#println("bdry = ", boundary)    
+#println("sizes = ",new_sizes)
+#println("core1nodes = ",core1nodes)
+
+###########################################
+# if length(new_sizes) != length(boundary)
+#     println("WARNING: Wrong size of sizes and boundary!")
+#     println("WARNING: Program will exit!")
+#     exit()
+# end
+# for u in core1nodes
+#     if in(u,boundary) == true || in(u,bridges) == true
+#         println("WARNING: core1nodes are not correct!")
+#         exit()
+#     end
+# end
+###########################################
+println("### reshaping bridges time:",time()- tr3, "(s)")
+
+B = Bridges(bridges, boundary, new_sizes)
+println("### cleaning up time:",time()- t, "(s)")
+return B, core1nodes
+end
