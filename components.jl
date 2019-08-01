@@ -31,19 +31,20 @@ end
 #### do not delete all components of size 1
 function nodesInComps(compvec::Vector{Ti}, bridges :: Array{Ti,1}) where Ti
     nc = maximum(compvec)
-    println("compvec", compvec)
+    #println("compvec", compvec)
     tokeep = Array{Ti,1}()
     sizes = zeros(Ti,nc)
     for i in compvec
         sizes[i] += 1
     end
-    println(sizes)
+    #println(sizes)
     ### TODO: maybe count func is slow?? Check
     for u in unique(bridges)
         if count(x->x==u,bridges) > 1
             push!(tokeep,compvec[u])
         end
     end
+
     ### previous implementation:
     # idx = findin(sizes,1)
     # for u in unique(bridges)
@@ -61,6 +62,10 @@ function nodesInComps(compvec::Vector{Ti}, bridges :: Array{Ti,1}) where Ti
     l = length(idx)
     println("l = $l and idx= ", idx)
     idx = [idx; tokeep]
+    l = length(idx)
+    println("l = $l and idx= ", idx)
+    #### TODO : I just changed that!! Not sure if idx should unique
+    idx = unique(idx)
     l = length(idx)
     println("l = $l and idx= ", idx)
     comps = Vector{Vector{Ti}}(l)
@@ -111,10 +116,10 @@ function allComp(mat:: SparseMatrixCSC{Tv,Ti}, bridges :: Array{Ti,1}) where {Tv
     cv = components(mat)
     nodes = nodesInComps(cv,bridges)
     nc = length(nodes)
-    println("nc:", nc)
+    #println("nc:", nc)
     comps = Vector{SparseMatrixCSC{Tv,Ti}}(nc) # (undef nc)
     for (i, c) in enumerate(nodes)
-        println(c)
+        #println(c)
         comps[i] = mat[c,c]
     end
     return comps, nodes, nc

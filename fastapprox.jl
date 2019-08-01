@@ -201,7 +201,6 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solut = noth
     A, B = extractBridges(A)
     println("### extracting bridges time: ", time()- start_time, "(s)") 
     t = time()
-    return
     C = Array{Component,1}
     C = buildComponents(A, B)
     count = length(C)
@@ -210,6 +209,7 @@ function cfcAccelerate(A:: SparseMatrixCSC{Float64}, w :: IOStream, solut = noth
     #isSpecialNode(B.edges, B.core2nodes, solut)
     #isInMaxComponent(C, solut)
     #printDiagnostics(C, B)
+    return 
     if count == 1
         c = C[1]
         t = time()
@@ -295,15 +295,16 @@ function cfcAccelerate2(A:: SparseMatrixCSC{Float64}, w :: IOStream)
     println("### extracting bridges time: ", time()- start_time, "(s)")
     println("Bridges:")
     printBridges(B)
-    return 
     t = time()
     C = Array{Component,1}
+    
     C = buildComponents(A, B)
     count = length(C)
     println("### creating components time: ", time()- t, "(s)") 
     #printDiagnostics(C, B)
     println("Bridges:")
     printBridges(B)
+
     if count == 1
         c = C[1]
         t = time()
@@ -326,7 +327,7 @@ function cfcAccelerate2(A:: SparseMatrixCSC{Float64}, w :: IOStream)
             println("calculate component time:", time() - t, "(s)")
             lkdistances = sum(c.distances,1)[:,2:end]
             tldistances = sum(c.distances,2)[:]
-            
+            return
             #println("Distances: ",tldistances)
             #mu, min = minDistanceInSet(c.link, tldistances)
             #rate = evaluateMinDistance(tldistances, min)
